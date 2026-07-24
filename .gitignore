@@ -1,0 +1,108 @@
+# =========================
+# ENVIRONMENT VARIABLES
+# =========================
+.env
+.env.*
+!.env.example
+
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+
+# =========================
+# PYTHON / FASTAPI
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+venv/
+.venv/
+env/
+ENV/
+
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+*.log
+
+
+# =========================
+# NODE / REACT / VITE
+# =========================
+node_modules/
+frontend/node_modules/
+
+dist/
+frontend/dist/
+
+build/
+frontend/build/
+
+.vite/
+
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+
+# =========================
+# OPERATING SYSTEM
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# =========================
+# TEMPORARY FILES
+# =========================
+tmp/
+temp/
+*.tmp
+*.temp
+
+
+# =========================
+# MODEL / LARGE FILES
+# =========================
+*.h5
+*.keras
+*.pth
+*.pt
+*.onnx
+*.tflite
+
+models/*.h5
+models/*.keras
+backend/models/*.h5
+backend/models/*.keras
+
+
+# =========================
+# DATABASE LOCAL
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+
+
+# =========================
+# UPLOADS / GENERATED FILES
+# =========================
+uploads/
+backend/uploads/
+prediction_images/

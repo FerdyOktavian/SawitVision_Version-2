@@ -1,0 +1,3 @@
+belum_masak
+masak
+terlalu_masak
