@@ -2,54 +2,66 @@ import os
 from html import escape
 from typing import Any
 
-import resend
 from dotenv import load_dotenv
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Email, Mail, To
 
 load_dotenv()
 
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-RESEND_FROM_NAME = os.getenv("RESEND_FROM_NAME", "SawitVision AI")
-RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
-
-
-def _get_response_id(response: Any):
-    if response is None:
-        return None
-    if isinstance(response, dict):
-        return response.get("id")
-    return getattr(response, "id", None)
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_FROM_NAME = os.getenv("SENDGRID_FROM_NAME", "SawitVision AI")
+SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL")
 
 
 def send_email(to_email: str, subject: str, html_body: str):
-    if not RESEND_API_KEY:
-        raise ValueError("RESEND_API_KEY belum diset di environment Railway.")
+    """
+    Mengirim email HTML menggunakan Twilio SendGrid Web API.
+    """
 
-    if not RESEND_FROM_EMAIL:
-        raise ValueError("RESEND_FROM_EMAIL belum diset di environment Railway.")
+    if not SENDGRID_API_KEY:
+        raise ValueError("SENDGRID_API_KEY belum diset di environment Railway.")
+
+    if not SENDGRID_FROM_EMAIL:
+        raise ValueError("SENDGRID_FROM_EMAIL belum diset di environment Railway.")
 
     if not to_email or "@" not in to_email:
         raise ValueError("Alamat email penerima tidak valid.")
 
-    resend.api_key = RESEND_API_KEY
+    message = Mail(
+        from_email=Email(
+            SENDGRID_FROM_EMAIL,
+            SENDGRID_FROM_NAME,
+        ),
+        to_emails=To(to_email),
+        subject=subject,
+        html_content=html_body,
+    )
 
     try:
-        params: resend.Emails.SendParams = {
-            "from": f"{RESEND_FROM_NAME} <{RESEND_FROM_EMAIL}>",
-            "to": [to_email],
-            "subject": subject,
-            "html": html_body,
-        }
+        client = SendGridAPIClient(SENDGRID_API_KEY)
+        response = client.send(message)
 
-        response = resend.Emails.send(params)
+        if response.status_code not in (200, 201, 202):
+            raise RuntimeError(
+                f"SendGrid mengembalikan status {response.status_code}."
+            )
 
         return {
             "success": True,
-            "email_id": _get_response_id(response),
-            "provider": "resend",
+            "status_code": response.status_code,
+            "provider": "sendgrid",
         }
+
     except Exception as error:
+        error_body = getattr(error, "body", None)
+
+        if isinstance(error_body, bytes):
+            error_body = error_body.decode("utf-8", errors="replace")
+
+        detail = error_body or str(error)
+
         raise RuntimeError(
-            f"Gagal mengirim email melalui Resend: {error}"
+            f"Gagal mengirim email melalui SendGrid: {detail}"
         ) from error
 
 
