@@ -17,3 +17,5 @@ numpy==1.23.5
 protobuf==3.19.6
 h5py==3.7.0
 huggingface-hub
+
+resend
