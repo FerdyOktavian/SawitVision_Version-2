@@ -12,5 +12,8 @@ passlib[bcrypt]
 python-jose[cryptography]
 email-validator
 
-tensorflow-cpu==2.21.0
+tensorflow-cpu==2.10.1
+numpy==1.23.5
+protobuf==3.20.3
+h5py==3.7.0
 huggingface-hub
