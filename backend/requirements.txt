@@ -6,6 +6,7 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 supabase
+tensorflow-cpu
 
 bcrypt==4.0.1
 passlib[bcrypt]
@@ -16,3 +17,4 @@ tensorflow==2.10.1
 numpy==1.23.5
 protobuf==3.20.1
 h5py==3.7.0
+huggingface-hub

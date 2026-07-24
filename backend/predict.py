@@ -3,13 +3,14 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.efficientnet_v2 import preprocess_input
+from model_downloader import ensure_model_downloaded
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_PATH = os.path.join(
     BASE_DIR,
-    "model_sawit.keras"
+    ensure_model_downloaded()
 )
 
 CLASS_NAMES_PATH = os.path.join(BASE_DIR, "class_names.txt")
