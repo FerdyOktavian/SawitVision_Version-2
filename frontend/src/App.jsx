@@ -21,7 +21,6 @@ const HISTORY_PAGE_SIZE = 10;
 const STATS_API_URL = `${BASE_API_URL}/stats`;
 const MAX_ZOOM = 5;
 
-
 const formatApiError = (detail, fallbackMessage) => {
   if (!detail) return fallbackMessage;
 
@@ -144,8 +143,8 @@ function App() {
   const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
 
   const [profileForm, setProfileForm] = useState({
-  name: "",
-  email: "",
+    name: "",
+    email: "",
   });
 
   const [profileSaving, setProfileSaving] = useState(false);
@@ -162,8 +161,10 @@ function App() {
   const [adminStorage, setAdminStorage] = useState(null);
   const [adminStorageLoading, setAdminStorageLoading] = useState(false);
   const [adminStorageCleanupLimit, setAdminStorageCleanupLimit] = useState(10);
-  const [adminStorageCleanupLoading, setAdminStorageCleanupLoading] = useState(false);
-  const [adminStorageCleanupMessage, setAdminStorageCleanupMessage] = useState("");
+  const [adminStorageCleanupLoading, setAdminStorageCleanupLoading] =
+    useState(false);
+  const [adminStorageCleanupMessage, setAdminStorageCleanupMessage] =
+    useState("");
   const [adminStorageCleanupError, setAdminStorageCleanupError] = useState("");
 
   // State untuk activity log admin.
@@ -380,7 +381,9 @@ function App() {
         }
 
         if (!response.ok) {
-          throw new Error(formatApiError(data.detail, "Verifikasi email gagal."));
+          throw new Error(
+            formatApiError(data.detail, "Verifikasi email gagal."),
+          );
         }
 
         // Setelah email valid, hapus token lama di frontend agar user login ulang.
@@ -570,12 +573,12 @@ function App() {
 
   // Saat tab Admin dibuka, ambil statistik global dan daftar user.
   useEffect(() => {
-  if (currentUser?.role === "admin" && activeTab === "admin") {
-    fetchAdminStats();
-    fetchAdminUsers();
-    fetchAdminStorage();
-  }
-}, [activeTab, currentUser]);
+    if (currentUser?.role === "admin" && activeTab === "admin") {
+      fetchAdminStats();
+      fetchAdminUsers();
+      fetchAdminStorage();
+    }
+  }, [activeTab, currentUser]);
 
   const formatDateTime = (dateString) => {
     if (!dateString) return "-";
@@ -964,9 +967,7 @@ function App() {
 
       const data = await response.json();
       const confidenceValue = Number(data.confidence || 0);
-      const minimumConfidence = Number(
-        data.history?.minimum_confidence ?? 70,
-      );
+      const minimumConfidence = Number(data.history?.minimum_confidence ?? 70);
       const historySaved =
         typeof data.history?.saved === "boolean"
           ? data.history.saved
@@ -1004,8 +1005,50 @@ function App() {
     }
   };
 
+  // Menyiapkan sumber gambar yang aman untuk Canvas.
+  // URL gambar dari Supabase diambil sebagai Blob terlebih dahulu agar Canvas
+  // tidak terkena error "Tainted canvases may not be exported".
+  const prepareImageForCanvas = async (imageSource) => {
+    if (!imageSource) {
+      throw new Error("Sumber gambar tidak tersedia.");
+    }
+
+    // Data URL dan Blob URL sudah berasal dari origin aplikasi.
+    if (imageSource.startsWith("data:") || imageSource.startsWith("blob:")) {
+      return {
+        source: imageSource,
+        objectUrl: null,
+      };
+    }
+
+    const response = await fetch(imageSource, {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Gagal mengambil gambar dari penyimpanan. Status: ${response.status}`,
+      );
+    }
+
+    const imageBlob = await response.blob();
+
+    if (!imageBlob.type.startsWith("image/")) {
+      throw new Error("File yang diterima bukan gambar yang valid.");
+    }
+
+    const objectUrl = URL.createObjectURL(imageBlob);
+
+    return {
+      source: objectUrl,
+      objectUrl,
+    };
+  };
+
   // Export hasil prediksi menjadi gambar PNG.
-  const exportAsImage = (
+  const exportAsImage = async (
     exportResult = result,
     exportImage = capturedImage,
     exportSource = mode,
@@ -1015,81 +1058,124 @@ function App() {
       return;
     }
 
-    const classInfo = getClassInfo(exportResult.predicted_class);
-    const exportCanvas = document.createElement("canvas");
-    const ctx = exportCanvas.getContext("2d");
+    let temporaryObjectUrl = null;
 
-    exportCanvas.width = 900;
-    exportCanvas.height = 1450;
+    try {
+      const preparedImage = await prepareImageForCanvas(exportImage);
+      temporaryObjectUrl = preparedImage.objectUrl;
 
-    const drawRoundRect = (x, y, w, h, r) => {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-    };
+      const classInfo = getClassInfo(exportResult.predicted_class);
+      const exportCanvas = document.createElement("canvas");
+      const ctx = exportCanvas.getContext("2d");
 
-    const wrapText = (text, x, y, maxWidth, lineHeight) => {
-      const words = String(text || "").split(" ");
-      let line = "";
-
-      for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i] + " ";
-        const metrics = ctx.measureText(testLine);
-
-        if (metrics.width > maxWidth && i > 0) {
-          ctx.fillText(line, x, y);
-          line = words[i] + " ";
-          y += lineHeight;
-        } else {
-          line = testLine;
-        }
+      if (!ctx) {
+        throw new Error("Browser gagal membuat Canvas untuk ekspor gambar.");
       }
 
-      ctx.fillText(line, x, y);
-      return y + lineHeight;
-    };
+      exportCanvas.width = 900;
+      exportCanvas.height = 1450;
 
-    ctx.fillStyle = "#fff7e8";
-    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      const drawRoundRect = (x, y, w, h, r) => {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      };
 
-    ctx.fillStyle = "#24351f";
-    ctx.font = "bold 42px Arial";
-    ctx.fillText("Hasil Prediksi Sawit", 50, 70);
+      const wrapText = (textValue, x, y, maxWidth, lineHeight) => {
+        const words = String(textValue || "").split(" ");
+        let line = "";
 
-    ctx.fillStyle = "#6f604c";
-    ctx.font = "24px Arial";
-    ctx.fillText("Model: EfficientNetV2S", 50, 112);
-    ctx.fillText(`Tanggal: ${new Date().toLocaleString("id-ID")}`, 50, 150);
-    ctx.fillText(
-      `Sumber: ${
-        exportSource === "camera" || exportSource === "Kamera"
-          ? "Kamera"
-          : "Galeri"
-      }`,
-      50,
-      188,
-    );
+        for (let i = 0; i < words.length; i++) {
+          const testLine = `${line}${words[i]} `;
+          const metrics = ctx.measureText(testLine);
 
-    const img = new Image();
+          if (metrics.width > maxWidth && i > 0) {
+            ctx.fillText(line, x, y);
+            line = `${words[i]} `;
+            y += lineHeight;
+          } else {
+            line = testLine;
+          }
+        }
 
-    img.onload = () => {
+        ctx.fillText(line, x, y);
+        return y + lineHeight;
+      };
+
+      ctx.fillStyle = "#fff7e8";
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+      ctx.fillStyle = "#24351f";
+      ctx.font = "bold 42px Arial";
+      ctx.fillText("Hasil Prediksi Sawit", 50, 70);
+
+      ctx.fillStyle = "#6f604c";
+      ctx.font = "24px Arial";
+      ctx.fillText("Model: EfficientNetV2S", 50, 112);
+      ctx.fillText(`Tanggal: ${new Date().toLocaleString("id-ID")}`, 50, 150);
+      ctx.fillText(
+        `Sumber: ${
+          exportSource === "camera" || exportSource === "Kamera"
+            ? "Kamera"
+            : "Galeri"
+        }`,
+        50,
+        188,
+      );
+
+      const img = new Image();
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () =>
+          reject(new Error("Gambar gagal dimuat untuk proses ekspor."));
+        img.src = preparedImage.source;
+      });
+
       const imageX = 50;
       const imageY = 230;
       const imageW = 800;
       const imageH = 520;
 
+      // Menggambar dengan teknik object-fit: cover supaya gambar tidak gepeng.
+      const sourceRatio = img.naturalWidth / img.naturalHeight;
+      const targetRatio = imageW / imageH;
+
+      let sourceX = 0;
+      let sourceY = 0;
+      let sourceWidth = img.naturalWidth;
+      let sourceHeight = img.naturalHeight;
+
+      if (sourceRatio > targetRatio) {
+        sourceWidth = img.naturalHeight * targetRatio;
+        sourceX = (img.naturalWidth - sourceWidth) / 2;
+      } else {
+        sourceHeight = img.naturalWidth / targetRatio;
+        sourceY = (img.naturalHeight - sourceHeight) / 2;
+      }
+
       ctx.save();
       drawRoundRect(imageX, imageY, imageW, imageH, 28);
       ctx.clip();
-      ctx.drawImage(img, imageX, imageY, imageW, imageH);
+      ctx.drawImage(
+        img,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        imageX,
+        imageY,
+        imageW,
+        imageH,
+      );
       ctx.restore();
 
       const cardX = 50;
@@ -1151,13 +1237,23 @@ function App() {
         24,
       );
 
+      const imageDataUrl = exportCanvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.download = `hasil-prediksi-sawit-${Date.now()}.png`;
-      link.href = exportCanvas.toDataURL("image/png");
-      link.click();
-    };
 
-    img.src = exportImage;
+      link.download = `hasil-prediksi-sawit-${Date.now()}.png`;
+      link.href = imageDataUrl;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Export gambar gagal:", error);
+      alert(error?.message || "Gambar gagal disimpan. Silakan coba kembali.");
+    } finally {
+      if (temporaryObjectUrl) {
+        URL.revokeObjectURL(temporaryObjectUrl);
+      }
+    }
   };
 
   // Export hasil prediksi menjadi PDF lewat fitur print browser.
@@ -1415,7 +1511,9 @@ function App() {
 
       setActiveTab("home");
     } catch (error) {
-      setAuthError(getFriendlyErrorMessage(error, "Terjadi kesalahan autentikasi."));
+      setAuthError(
+        getFriendlyErrorMessage(error, "Terjadi kesalahan autentikasi."),
+      );
     } finally {
       setAuthLoading(false);
     }
@@ -1457,62 +1555,64 @@ function App() {
   }, [currentUser]);
 
   const handleProfileInputChange = (event) => {
-  const { name, value } = event.target;
+    const { name, value } = event.target;
 
-  setProfileForm((prevForm) => ({
-    ...prevForm,
-    [name]: value,
-  }));
+    setProfileForm((prevForm) => ({
+      ...prevForm,
+      [name]: value,
+    }));
 
-  setProfileError("");
-  setProfileMessage("");
-};
+    setProfileError("");
+    setProfileMessage("");
+  };
 
-const handleUpdateProfile = async (event) => {
-  event.preventDefault();
+  const handleUpdateProfile = async (event) => {
+    event.preventDefault();
 
-  setProfileSaving(true);
-  setProfileError("");
-  setProfileMessage("");
+    setProfileSaving(true);
+    setProfileError("");
+    setProfileMessage("");
 
-  try {
-    const response = await fetch(UPDATE_PROFILE_API_URL, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({
-        name: profileForm.name.trim(),
-        email: profileForm.email.trim(),
-      }),
-    });
+    try {
+      const response = await fetch(UPDATE_PROFILE_API_URL, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          name: profileForm.name.trim(),
+          email: profileForm.email.trim(),
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(
-        formatApiError(data.detail, "Profil gagal diperbarui."),
+      if (!response.ok) {
+        throw new Error(
+          formatApiError(data.detail, "Profil gagal diperbarui."),
+        );
+      }
+
+      setProfileMessage(data.message || "Profil berhasil diperbarui.");
+
+      if (data.user) {
+        setCurrentUser(data.user);
+        localStorage.setItem("sawitUser", JSON.stringify(data.user));
+      }
+
+      if (data.email_changed) {
+        setTimeout(() => {
+          handleLogout();
+        }, 2500);
+      }
+    } catch (error) {
+      setProfileError(
+        getFriendlyErrorMessage(error, "Profil gagal diperbarui."),
       );
+    } finally {
+      setProfileSaving(false);
     }
-
-    setProfileMessage(data.message || "Profil berhasil diperbarui.");
-
-    if (data.user) {
-      setCurrentUser(data.user);
-      localStorage.setItem("sawitUser", JSON.stringify(data.user));
-    }
-
-    if (data.email_changed) {
-      setTimeout(() => {
-        handleLogout();
-      }, 2500);
-    }
-  } catch (error) {
-    setProfileError(getFriendlyErrorMessage(error, "Profil gagal diperbarui."));
-  } finally {
-    setProfileSaving(false);
-  }
   };
   // Mengubah input form ganti password di halaman Profile.
   const handleChangePasswordInput = (event) => {
@@ -1571,7 +1671,9 @@ const handleUpdateProfile = async (event) => {
       }
 
       if (!response.ok) {
-        throw new Error(formatApiError(data.detail, "Gagal mengubah password."));
+        throw new Error(
+          formatApiError(data.detail, "Gagal mengubah password."),
+        );
       }
 
       setChangePasswordSuccess(data.message || "Password berhasil diubah.");
@@ -1582,7 +1684,10 @@ const handleUpdateProfile = async (event) => {
       });
     } catch (error) {
       setChangePasswordError(
-        getFriendlyErrorMessage(error, "Terjadi kesalahan saat mengubah password."),
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat mengubah password.",
+        ),
       );
     } finally {
       setChangePasswordLoading(false);
@@ -1610,14 +1715,19 @@ const handleUpdateProfile = async (event) => {
       }
 
       if (!response.ok) {
-        throw new Error(formatApiError(data.detail, "Gagal mengambil data admin."));
+        throw new Error(
+          formatApiError(data.detail, "Gagal mengambil data admin."),
+        );
       }
 
       setAdminStats(data);
     } catch (error) {
       console.error("Admin stats error:", error);
       setAdminError(
-        getFriendlyErrorMessage(error, "Terjadi kesalahan saat mengambil data admin."),
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat mengambil data admin.",
+        ),
       );
     } finally {
       setAdminLoading(false);
@@ -1645,14 +1755,19 @@ const handleUpdateProfile = async (event) => {
       }
 
       if (!response.ok) {
-        throw new Error(formatApiError(data.detail, "Gagal mengambil daftar user."));
+        throw new Error(
+          formatApiError(data.detail, "Gagal mengambil daftar user."),
+        );
       }
 
       setAdminUsers(data.data || []);
     } catch (error) {
       console.error("Admin users error:", error);
       setAdminError(
-        getFriendlyErrorMessage(error, "Terjadi kesalahan saat mengambil daftar user."),
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat mengambil daftar user.",
+        ),
       );
     } finally {
       setAdminUsersLoading(false);
@@ -1736,7 +1851,9 @@ const handleUpdateProfile = async (event) => {
       }
 
       if (!response.ok) {
-        throw new Error(formatApiError(data.detail, "Gagal mengambil activity log."));
+        throw new Error(
+          formatApiError(data.detail, "Gagal mengambil activity log."),
+        );
       }
 
       const items = data.data || [];
@@ -1757,7 +1874,10 @@ const handleUpdateProfile = async (event) => {
     } catch (error) {
       console.error("Admin activity log error:", error);
       setAdminActivityError(
-        getFriendlyErrorMessage(error, "Terjadi kesalahan saat mengambil activity log."),
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat mengambil activity log.",
+        ),
       );
     } finally {
       setAdminActivityLoading(false);
@@ -1784,39 +1904,42 @@ const handleUpdateProfile = async (event) => {
   };
 
   const fetchAdminStorage = async () => {
-  if (currentUser?.role !== "admin") return;
+    if (currentUser?.role !== "admin") return;
 
-  setAdminStorageLoading(true);
-  setAdminError("");
-
-  try {
-    const response = await fetch(ADMIN_STORAGE_API_URL, {
-      headers: getAuthHeaders(),
-    });
-
-    let data = {};
+    setAdminStorageLoading(true);
+    setAdminError("");
 
     try {
-      data = await response.json();
-    } catch {
-      // Pakai pesan default jika response bukan JSON.
-    }
+      const response = await fetch(ADMIN_STORAGE_API_URL, {
+        headers: getAuthHeaders(),
+      });
 
-    if (!response.ok) {
-      throw new Error(
-        formatApiError(data.detail, "Gagal mengambil statistik storage."),
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        // Pakai pesan default jika response bukan JSON.
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          formatApiError(data.detail, "Gagal mengambil statistik storage."),
+        );
+      }
+
+      setAdminStorage(data);
+    } catch (error) {
+      console.error("Admin storage error:", error);
+      setAdminError(
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat mengambil statistik storage.",
+        ),
       );
+    } finally {
+      setAdminStorageLoading(false);
     }
-
-    setAdminStorage(data);
-  } catch (error) {
-    console.error("Admin storage error:", error);
-    setAdminError(
-      getFriendlyErrorMessage(error, "Terjadi kesalahan saat mengambil statistik storage."),
-    );
-  } finally {
-    setAdminStorageLoading(false);
-  }
   };
 
   const handleAdminStorageCleanup = async () => {
@@ -1853,10 +1976,7 @@ const handleUpdateProfile = async (event) => {
 
       if (!response.ok) {
         throw new Error(
-          formatApiError(
-            data.detail,
-            "Cleanup storage gagal dilakukan.",
-          ),
+          formatApiError(data.detail, "Cleanup storage gagal dilakukan."),
         );
       }
 
@@ -1866,9 +1986,7 @@ const handleUpdateProfile = async (event) => {
 
       setAdminStorageCleanupMessage(
         `${data.message || "Cleanup storage selesai."}${
-          failedCount > 0
-            ? ` ${failedCount} record gagal dibersihkan.`
-            : ""
+          failedCount > 0 ? ` ${failedCount} record gagal dibersihkan.` : ""
         }`,
       );
 
@@ -1880,7 +1998,10 @@ const handleUpdateProfile = async (event) => {
     } catch (error) {
       console.error("Admin storage cleanup error:", error);
       setAdminStorageCleanupError(
-        getFriendlyErrorMessage(error, "Terjadi kesalahan saat membersihkan storage."),
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat membersihkan storage.",
+        ),
       );
     } finally {
       setAdminStorageCleanupLoading(false);
@@ -1921,7 +2042,9 @@ const handleUpdateProfile = async (event) => {
       }
 
       if (!response.ok) {
-        throw new Error(formatApiError(data.detail, "Gagal memperbarui status user."));
+        throw new Error(
+          formatApiError(data.detail, "Gagal memperbarui status user."),
+        );
       }
 
       await fetchAdminStats();
@@ -1930,7 +2053,10 @@ const handleUpdateProfile = async (event) => {
     } catch (error) {
       console.error("Toggle user status error:", error);
       setAdminError(
-        getFriendlyErrorMessage(error, "Terjadi kesalahan saat memperbarui user."),
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat memperbarui user.",
+        ),
       );
     } finally {
       setAdminActionLoadingId(null);
@@ -1965,7 +2091,9 @@ const handleUpdateProfile = async (event) => {
       }
 
       if (!response.ok) {
-        throw new Error(formatApiError(data.detail, "Gagal memproses lupa password."));
+        throw new Error(
+          formatApiError(data.detail, "Gagal memproses lupa password."),
+        );
       }
 
       setForgotMessage(
@@ -1973,7 +2101,12 @@ const handleUpdateProfile = async (event) => {
           "Jika email terdaftar, link reset password akan dikirim.",
       );
     } catch (error) {
-      setForgotError(getFriendlyErrorMessage(error, "Terjadi kesalahan saat mengirim email."));
+      setForgotError(
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat mengirim email.",
+        ),
+      );
     } finally {
       setForgotLoading(false);
     }
@@ -3595,9 +3728,7 @@ const handleUpdateProfile = async (event) => {
 
                     <div>
                       <span>Total File</span>
-                      <b>
-                        {adminStorage.files?.total_storage_objects ?? 0}
-                      </b>
+                      <b>{adminStorage.files?.total_storage_objects ?? 0}</b>
                     </div>
 
                     <div>
