@@ -3139,10 +3139,9 @@ function App() {
                         probabilities: item.probabilities || {},
                       };
                       const imageForExport =
-                        item.image_processed_url ||
                         item.image_thumbnail_url ||
+                        item.image_processed_url ||
                         "";
-
                       return (
                         <div className="history-wrapper" key={item.id}>
                           <div className="history-item">
