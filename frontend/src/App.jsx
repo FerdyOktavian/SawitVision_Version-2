@@ -19,6 +19,8 @@ const ADMIN_ACTIVITY_LOGS_API_URL = `${BASE_API_URL}/admin/activity-logs`;
 const API_URL = `${BASE_API_URL}/predict`;
 const HISTORY_PAGE_SIZE = 10;
 const STATS_API_URL = `${BASE_API_URL}/stats`;
+const USER_REPORT_API_URL = `${BASE_API_URL}/reports/my-predictions.xlsx`;
+const ADMIN_REPORT_API_URL = `${BASE_API_URL}/admin/reports/predictions.xlsx`;
 const MAX_ZOOM = 5;
 
 const formatApiError = (detail, fallbackMessage) => {
@@ -213,6 +215,21 @@ function App() {
 
   const [historyFilter, setHistoryFilter] = useState("all");
 
+  // =====================
+  // STATE LAPORAN EXCEL
+  // =====================
+  const [userReportStartDate, setUserReportStartDate] = useState("");
+  const [userReportEndDate, setUserReportEndDate] = useState("");
+  const [userReportLoading, setUserReportLoading] = useState(false);
+  const [userReportError, setUserReportError] = useState("");
+
+  const [adminReportStartDate, setAdminReportStartDate] = useState("");
+  const [adminReportEndDate, setAdminReportEndDate] = useState("");
+  const [adminReportUserId, setAdminReportUserId] = useState("");
+  const [adminReportClass, setAdminReportClass] = useState("");
+  const [adminReportLoading, setAdminReportLoading] = useState(false);
+  const [adminReportError, setAdminReportError] = useState("");
+
   const [dashboardStats, setDashboardStats] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
@@ -342,6 +359,164 @@ function App() {
     return {
       Authorization: `Bearer ${authToken}`,
     };
+  };
+
+  const getDownloadFilename = (response, fallbackFilename) => {
+    const contentDisposition =
+      response.headers.get("content-disposition") || "";
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+
+    if (utf8Match?.[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1]);
+      } catch {
+        return utf8Match[1];
+      }
+    }
+
+    return plainMatch?.[1] || fallbackFilename;
+  };
+
+  const downloadExcelReport = async ({
+    url,
+    fallbackFilename,
+    setLoading,
+    setError,
+  }) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        let message = "Laporan Excel gagal dibuat.";
+
+        try {
+          const data = await response.json();
+          message = formatApiError(data.detail, message);
+        } catch {
+          // Gunakan pesan default jika response bukan JSON.
+        }
+
+        throw new Error(message);
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (
+        !contentType.includes(
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ) &&
+        !contentType.includes("application/octet-stream")
+      ) {
+        throw new Error("Response server bukan file Excel yang valid.");
+      }
+
+      const blob = await response.blob();
+
+      if (!blob || blob.size === 0) {
+        throw new Error("File laporan kosong.");
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = getDownloadFilename(response, fallbackFilename);
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error("Download laporan gagal:", error);
+      setError(
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat mengunduh laporan Excel.",
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportUserExcelReport = async () => {
+    if (
+      userReportStartDate &&
+      userReportEndDate &&
+      userReportStartDate > userReportEndDate
+    ) {
+      setUserReportError("Tanggal mulai tidak boleh melebihi tanggal akhir.");
+      return;
+    }
+
+    const params = new URLSearchParams();
+
+    if (userReportStartDate) {
+      params.set("start_date", userReportStartDate);
+    }
+
+    if (userReportEndDate) {
+      params.set("end_date", userReportEndDate);
+    }
+
+    const query = params.toString();
+    const url = query ? `${USER_REPORT_API_URL}?${query}` : USER_REPORT_API_URL;
+
+    await downloadExcelReport({
+      url,
+      fallbackFilename: `Laporan_Prediksi_${Date.now()}.xlsx`,
+      setLoading: setUserReportLoading,
+      setError: setUserReportError,
+    });
+  };
+
+  const exportAdminExcelReport = async () => {
+    if (
+      adminReportStartDate &&
+      adminReportEndDate &&
+      adminReportStartDate > adminReportEndDate
+    ) {
+      setAdminReportError("Tanggal mulai tidak boleh melebihi tanggal akhir.");
+      return;
+    }
+
+    const params = new URLSearchParams();
+
+    if (adminReportStartDate) {
+      params.set("start_date", adminReportStartDate);
+    }
+
+    if (adminReportEndDate) {
+      params.set("end_date", adminReportEndDate);
+    }
+
+    if (adminReportUserId) {
+      params.set("user_id", adminReportUserId);
+    }
+
+    if (adminReportClass) {
+      params.set("predicted_class", adminReportClass);
+    }
+
+    const query = params.toString();
+    const url = query
+      ? `${ADMIN_REPORT_API_URL}?${query}`
+      : ADMIN_REPORT_API_URL;
+
+    await downloadExcelReport({
+      url,
+      fallbackFilename: `Laporan_Global_SawitVision_${Date.now()}.xlsx`,
+      setLoading: setAdminReportLoading,
+      setError: setAdminReportError,
+    });
   };
 
   // Mengecek apakah user sedang membuka link /verify-email?token=... dari Gmail.
@@ -2994,6 +3169,79 @@ function App() {
               </p>
             </section>
 
+            <section className="report-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="result-label">Laporan Pengguna</p>
+                  <h2>Export Laporan Excel</h2>
+                </div>
+                <span className="mini-badge">📊</span>
+              </div>
+
+              <p className="report-description">
+                Download seluruh hasil prediksi akun kamu dalam bentuk Excel
+                lengkap dengan tabel ringkasan, detail prediksi, dan grafik.
+              </p>
+
+              <div className="report-filter-grid">
+                <label>
+                  Dari Tanggal
+                  <input
+                    type="date"
+                    value={userReportStartDate}
+                    onChange={(event) => {
+                      setUserReportStartDate(event.target.value);
+                      setUserReportError("");
+                    }}
+                  />
+                </label>
+
+                <label>
+                  Sampai Tanggal
+                  <input
+                    type="date"
+                    value={userReportEndDate}
+                    onChange={(event) => {
+                      setUserReportEndDate(event.target.value);
+                      setUserReportError("");
+                    }}
+                  />
+                </label>
+              </div>
+
+              {userReportError && (
+                <div className="report-feedback error">
+                  ⚠️ {userReportError}
+                </div>
+              )}
+
+              <div className="report-action-row">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => {
+                    setUserReportStartDate("");
+                    setUserReportEndDate("");
+                    setUserReportError("");
+                  }}
+                  disabled={userReportLoading}
+                >
+                  Reset Filter
+                </button>
+
+                <button
+                  type="button"
+                  className="primary-btn"
+                  onClick={exportUserExcelReport}
+                  disabled={userReportLoading}
+                >
+                  {userReportLoading
+                    ? "Membuat Laporan..."
+                    : "📥 Download Excel"}
+                </button>
+              </div>
+            </section>
+
             <section className="history-card">
               <div className="history-header">
                 <div>
@@ -3647,6 +3895,118 @@ function App() {
                 <p>{adminError}</p>
               </section>
             )}
+
+            <section className="admin-card report-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="result-label">Laporan Sistem</p>
+                  <h2>Export Laporan Global</h2>
+                </div>
+                <span className="mini-badge">📈</span>
+              </div>
+
+              <p className="report-description">
+                Export seluruh data prediksi pengguna dalam bentuk Excel.
+                Laporan berisi dashboard, rekap setiap pengguna, seluruh
+                prediksi, dan visualisasi grafik.
+              </p>
+
+              <div className="report-filter-grid admin-report-filter-grid">
+                <label>
+                  Dari Tanggal
+                  <input
+                    type="date"
+                    value={adminReportStartDate}
+                    onChange={(event) => {
+                      setAdminReportStartDate(event.target.value);
+                      setAdminReportError("");
+                    }}
+                  />
+                </label>
+
+                <label>
+                  Sampai Tanggal
+                  <input
+                    type="date"
+                    value={adminReportEndDate}
+                    onChange={(event) => {
+                      setAdminReportEndDate(event.target.value);
+                      setAdminReportError("");
+                    }}
+                  />
+                </label>
+
+                <label>
+                  Pengguna
+                  <select
+                    value={adminReportUserId}
+                    onChange={(event) => {
+                      setAdminReportUserId(event.target.value);
+                      setAdminReportError("");
+                    }}
+                  >
+                    <option value="">Semua Pengguna</option>
+                    {adminUsers
+                      .filter((user) => user.role === "user")
+                      .map((user) => (
+                        <option value={user.id} key={user.id}>
+                          {user.name} — {user.email}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label>
+                  Kelas Prediksi
+                  <select
+                    value={adminReportClass}
+                    onChange={(event) => {
+                      setAdminReportClass(event.target.value);
+                      setAdminReportError("");
+                    }}
+                  >
+                    <option value="">Semua Kelas</option>
+                    <option value="belum_masak">Belum Masak</option>
+                    <option value="masak">Masak</option>
+                    <option value="terlalu_masak">Terlalu Masak</option>
+                  </select>
+                </label>
+              </div>
+
+              {adminReportError && (
+                <div className="report-feedback error">
+                  ⚠️ {adminReportError}
+                </div>
+              )}
+
+              <div className="report-action-row">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => {
+                    setAdminReportStartDate("");
+                    setAdminReportEndDate("");
+                    setAdminReportUserId("");
+                    setAdminReportClass("");
+                    setAdminReportError("");
+                  }}
+                  disabled={adminReportLoading}
+                >
+                  Reset Filter
+                </button>
+
+                <button
+                  type="button"
+                  className="primary-btn"
+                  onClick={exportAdminExcelReport}
+                  disabled={adminReportLoading}
+                >
+                  {adminReportLoading
+                    ? "Membuat Laporan..."
+                    : "📥 Export Laporan Global"}
+                </button>
+              </div>
+            </section>
 
             <section className="admin-grid-stats">
               <div className="admin-stat-card highlight">

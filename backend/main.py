@@ -22,6 +22,7 @@ from crud import (
 )
 from database import SessionLocal
 from predict import load_class_names, load_sawit_model, predict_image
+from report_routes import router as report_router
 from storage_supabase import (
     delete_prediction_images_from_supabase,
     upload_prediction_images,
@@ -62,6 +63,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(report_router)
 
 class_names = load_class_names()
 model = load_sawit_model()

@@ -3984,3 +3984,108 @@ button:disabled {
   flex-shrink: 0;
   color: #6f604c;
 }
+/* =====================
+   LAPORAN EXCEL
+   ===================== */
+
+.report-card {
+  margin: 16px 0;
+  padding: 20px;
+  border-radius: 22px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #ead8bd);
+  box-shadow: 0 12px 32px rgba(47, 125, 50, 0.08);
+}
+
+.report-description {
+  margin: 8px 0 18px;
+  color: var(--muted-text, #6f604c);
+  line-height: 1.6;
+}
+
+.report-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.report-filter-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-color, #24351f);
+}
+
+.report-filter-grid input,
+.report-filter-grid select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #d8c7aa);
+  border-radius: 12px;
+  background: var(--input-bg, #fffdf8);
+  color: var(--text-color, #24351f);
+  font: inherit;
+  outline: none;
+}
+
+.report-filter-grid input:focus,
+.report-filter-grid select:focus {
+  border-color: #2f7d32;
+  box-shadow: 0 0 0 3px rgba(47, 125, 50, 0.12);
+}
+
+.admin-report-filter-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.report-action-row button {
+  min-height: 46px;
+}
+
+.report-feedback {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  line-height: 1.5;
+}
+
+.report-feedback.error {
+  color: #9f1d1d;
+  background: #fff0f0;
+  border: 1px solid #f2b9b9;
+}
+
+.dark-theme .report-card {
+  background: #20261f;
+  border-color: #3e493b;
+}
+
+.dark-theme .report-description,
+.dark-theme .report-filter-grid label {
+  color: #d9dfd5;
+}
+
+.dark-theme .report-filter-grid input,
+.dark-theme .report-filter-grid select {
+  background: #151a14;
+  border-color: #465043;
+  color: #f4f7f2;
+}
+
+@media (max-width: 640px) {
+  .report-filter-grid,
+  .admin-report-filter-grid,
+  .report-action-row {
+    grid-template-columns: 1fr;
+  }
+}
