@@ -1035,11 +1035,40 @@ function App() {
 
     const imageBlob = await response.blob();
 
-    if (!imageBlob.type.startsWith("image/")) {
-      throw new Error("File yang diterima bukan gambar yang valid.");
+    if (!imageBlob || imageBlob.size === 0) {
+      throw new Error("File gambar kosong atau gagal diunduh.");
     }
 
-    const objectUrl = URL.createObjectURL(imageBlob);
+    // Supabase/CDN kadang mengirim Content-Type kosong atau
+    // application/octet-stream walaupun isi file sebenarnya adalah gambar.
+    // Karena itu validasi MIME tidak dibuat terlalu ketat.
+    const responseContentType =
+      response.headers.get("content-type") || imageBlob.type || "";
+
+    if (
+      responseContentType &&
+      !responseContentType.startsWith("image/") &&
+      !responseContentType.includes("application/octet-stream")
+    ) {
+      const responseText = await imageBlob.text().catch(() => "");
+
+      if (
+        responseText.trim().startsWith("<!DOCTYPE html") ||
+        responseText.trim().startsWith("<html")
+      ) {
+        throw new Error(
+          "URL gambar mengembalikan halaman HTML, bukan file gambar. Periksa URL Supabase atau status bucket.",
+        );
+      }
+    }
+
+    // Paksa tipe Blob menjadi image/jpeg ketika server tidak memberikan MIME
+    // yang benar. Browser tetap akan memvalidasi isi gambar saat dimuat.
+    const normalizedBlob = imageBlob.type.startsWith("image/")
+      ? imageBlob
+      : imageBlob.slice(0, imageBlob.size, "image/jpeg");
+
+    const objectUrl = URL.createObjectURL(normalizedBlob);
 
     return {
       source: objectUrl,
@@ -1136,7 +1165,11 @@ function App() {
       await new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = () =>
-          reject(new Error("Gambar gagal dimuat untuk proses ekspor."));
+          reject(
+            new Error(
+              "File dari penyimpanan tidak dapat dibaca sebagai gambar. Periksa URL image_processed_url atau image_thumbnail_url.",
+            ),
+          );
         img.src = preparedImage.source;
       });
 
@@ -3139,9 +3172,10 @@ function App() {
                         probabilities: item.probabilities || {},
                       };
                       const imageForExport =
-                        item.image_thumbnail_url ||
                         item.image_processed_url ||
+                        item.image_thumbnail_url ||
                         "";
+
                       return (
                         <div className="history-wrapper" key={item.id}>
                           <div className="history-item">
