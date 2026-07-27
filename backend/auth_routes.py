@@ -24,7 +24,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 class RegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
 
 
 class LoginRequest(BaseModel):
@@ -38,7 +38,7 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str = Field(..., min_length=10)
-    new_password: str = Field(..., min_length=8, max_length=100)
+    new_password: str = Field(..., min_length=6, max_length=100)
 
 class UpdateProfileRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
@@ -46,8 +46,8 @@ class UpdateProfileRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str = Field(..., min_length=8, max_length=100)
-    new_password: str = Field(..., min_length=8, max_length=100)
+    old_password: str = Field(..., min_length=6, max_length=100)
+    new_password: str = Field(..., min_length=6, max_length=100)
 
 
 def get_user_by_email(db: Session, email: str):

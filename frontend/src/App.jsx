@@ -23,6 +23,84 @@ const USER_REPORT_API_URL = `${BASE_API_URL}/reports/my-predictions.xlsx`;
 const ADMIN_REPORT_API_URL = `${BASE_API_URL}/admin/reports/predictions.xlsx`;
 const MAX_ZOOM = 5;
 
+const ADMIN_PAGE_META = {
+  overview: {
+    icon: "🧭",
+    eyebrow: "Pusat Pengelolaan",
+    title: "Dashboard Admin",
+    description:
+      "Pilih bagian yang ingin dibuka. Setiap fitur dipisahkan agar lebih rapi dan mudah digunakan.",
+  },
+  users: {
+    icon: "👥",
+    eyebrow: "Pengguna",
+    title: "Kelola Pengguna",
+    description:
+      "Lihat akun yang terdaftar, jumlah prediksi, dan status keaktifan pengguna.",
+  },
+  reports: {
+    icon: "📄",
+    eyebrow: "Laporan",
+    title: "Laporan Prediksi",
+    description:
+      "Atur filter lalu unduh laporan hasil prediksi dalam format Excel.",
+  },
+  predictions: {
+    icon: "📊",
+    eyebrow: "Data Prediksi",
+    title: "Ringkasan Prediksi",
+    description:
+      "Pantau jumlah hasil pemeriksaan dan aktivitas prediksi terbaru.",
+  },
+  activity: {
+    icon: "🧾",
+    eyebrow: "Aktivitas",
+    title: "Aktivitas Sistem",
+    description:
+      "Lihat catatan aktivitas penting yang dilakukan pengguna dan admin.",
+  },
+  storage: {
+    icon: "🗂️",
+    eyebrow: "Penyimpanan",
+    title: "Penyimpanan Gambar",
+    description:
+      "Pantau penggunaan ruang penyimpanan dan bersihkan gambar lama saat diperlukan.",
+  },
+};
+
+const ADMIN_MENU_ITEMS = [
+  {
+    id: "users",
+    icon: "👥",
+    title: "Kelola Pengguna",
+    description: "Cek pengguna aktif dan atur status akun.",
+  },
+  {
+    id: "reports",
+    icon: "📄",
+    title: "Laporan Prediksi",
+    description: "Filter dan unduh laporan Excel.",
+  },
+  {
+    id: "predictions",
+    icon: "📊",
+    title: "Data Prediksi",
+    description: "Lihat ringkasan kelas dan hasil terbaru.",
+  },
+  {
+    id: "activity",
+    icon: "🧾",
+    title: "Aktivitas Sistem",
+    description: "Pantau catatan aktivitas pengguna dan admin.",
+  },
+  {
+    id: "storage",
+    icon: "🗂️",
+    title: "Penyimpanan Gambar",
+    description: "Cek kapasitas dan bersihkan gambar lama.",
+  },
+];
+
 const formatApiError = (detail, fallbackMessage) => {
   if (!detail) return fallbackMessage;
 
@@ -186,6 +264,7 @@ function App() {
   // STATE UTAMA APLIKASI
   // =====================
   const [activeTab, setActiveTab] = useState("home");
+  const [adminPage, setAdminPage] = useState("overview");
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem("sawitTheme") || "light";
@@ -755,6 +834,16 @@ function App() {
     }
   }, [activeTab, currentUser]);
 
+  useEffect(() => {
+    if (
+      currentUser?.role === "admin" &&
+      activeTab === "admin" &&
+      adminPage === "activity"
+    ) {
+      fetchAdminActivityLogs({ page: 1, reset: true });
+    }
+  }, [activeTab, adminPage, currentUser]);
+
   const formatDateTime = (dateString) => {
     if (!dateString) return "-";
 
@@ -1323,7 +1412,7 @@ function App() {
 
       ctx.fillStyle = "#6f604c";
       ctx.font = "24px Arial";
-      ctx.fillText("Model: EfficientNetV2S", 50, 112);
+      ctx.fillText("Sistem: SawitVision", 50, 112);
       ctx.fillText(`Tanggal: ${new Date().toLocaleString("id-ID")}`, 50, 150);
       ctx.fillText(
         `Sumber: ${
@@ -1572,7 +1661,7 @@ function App() {
         <div class="card">
           <h1>Hasil Prediksi Sawit</h1>
           <div class="meta">
-            Model: EfficientNetV2S<br/>
+            Sistem: SawitVision<br/>
             Tanggal: ${new Date().toLocaleString("id-ID")}<br/>
             Sumber: ${
               exportSource === "camera" || exportSource === "Kamera"
@@ -2460,9 +2549,9 @@ function App() {
         <main className="phone-shell auth-shell">
           <section className="auth-hero verify-hero">
             <div className="auth-logo">🔐</div>
-            <p className="eyebrow">SawitVision AI</p>
+            <p className="eyebrow">SawitVision</p>
             <h1>Reset Password</h1>
-            <p>Buat password baru untuk akun SawitVision AI kamu.</p>
+            <p>Buat password baru untuk akun SawitVision kamu.</p>
           </section>
 
           <section className="auth-card verify-card">
@@ -2580,7 +2669,7 @@ function App() {
         <main className="phone-shell auth-shell">
           <section className="auth-hero verify-hero">
             <div className="auth-logo">🌴</div>
-            <p className="eyebrow">SawitVision AI</p>
+            <p className="eyebrow">SawitVision</p>
             <h1>Verifikasi Email</h1>
             <p>
               Sistem sedang memastikan bahwa email yang digunakan benar-benar
@@ -2626,7 +2715,7 @@ function App() {
           <section className="auth-note">
             <b>Keamanan Akun</b>
             <p>
-              Verifikasi email membantu memastikan akun SawitVision AI digunakan
+              Verifikasi email membantu memastikan akun SawitVision digunakan
               oleh pemilik email yang benar.
             </p>
           </section>
@@ -2661,7 +2750,7 @@ function App() {
         <main className="phone-shell auth-shell">
           <section className="auth-hero">
             <div className="auth-logo">🌴</div>
-            <p className="eyebrow">SawitVision AI</p>
+            <p className="eyebrow">SawitVision</p>
             <h1>
               {authMode === "login"
                 ? "Masuk Akun"
@@ -2792,8 +2881,8 @@ function App() {
                     name="password"
                     value={authForm.password}
                     onChange={handleAuthInputChange}
-                    placeholder="Minimal 8 karakter"
-                    minLength={8}
+                    placeholder="Minimal 6 karakter"
+                    minLength={6}
                     required
                   />
                 </label>
@@ -2837,10 +2926,10 @@ function App() {
           </section>
 
           <section className="auth-note">
-            <b>Model EfficientNetV2S</b>
+            <b>Pemeriksaan Kematangan Sawit</b>
             <p>
-              Sistem klasifikasi sawit dengan riwayat prediksi berbasis akun,
-              database Neon, dan penyimpanan gambar Supabase.
+              Masuk untuk memeriksa gambar, menyimpan riwayat, dan melihat
+              kembali hasil pemeriksaan kamu.
             </p>
           </section>
         </main>
@@ -2853,36 +2942,72 @@ function App() {
   // =====================
   return (
     <div className={`app ${theme === "dark" ? "dark-theme" : "light-theme"}`}>
-      <main className="phone-shell">
+      <main
+        className={
+          activeTab === "admin" ? "phone-shell admin-shell" : "phone-shell"
+        }
+      >
         {activeTab === "home" && (
           <>
-            <section className="header">
-              <p className="eyebrow">EfficientNetV2S</p>
+            <section className="home-hero">
+              <div className="home-topbar">
+                <div className="home-brand">
+                  <span className="home-brand-icon">🌴</span>
 
-              <div className="title-row">
-                <h1>Klasifikasi Sawit</h1>
-
-                <button className="theme-toggle" onClick={toggleTheme}>
-                  {theme === "dark" ? "☀️" : "🌙"}
-                </button>
+                  <div>
+                    <p className="eyebrow">Pemeriksa Kematangan Sawit</p>
+                    <h1>Cek Kematangan Sawit</h1>
+                  </div>
+                </div>
 
                 <button
-                  className="theme-toggle logout-toggle"
-                  onClick={handleLogout}
-                  title="Logout"
+                  className="theme-toggle home-theme-toggle"
+                  onClick={toggleTheme}
+                  title={
+                    theme === "dark"
+                      ? "Gunakan tampilan terang"
+                      : "Gunakan tampilan gelap"
+                  }
+                  aria-label="Ganti tema"
                 >
-                  🚪
+                  {theme === "dark" ? "☀️" : "🌙"}
                 </button>
               </div>
 
               <p className="subtitle">
-                Gunakan kamera atau galeri untuk prediksi kematangan buah sawit.
+                Ambil foto atau pilih gambar untuk memeriksa tingkat kematangan
+                buah kelapa sawit.
               </p>
 
               {currentUser && (
-                <div className="user-pill">
-                  👤 {currentUser.name} • {currentUser.email}
-                </div>
+                <button
+                  type="button"
+                  className="home-profile-card"
+                  onClick={() => setActiveTab("profile")}
+                >
+                  <span className="home-profile-avatar">
+                    {currentUser?.name
+                      ? currentUser.name
+                          .split(" ")
+                          .map((word) => word[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()
+                      : "U"}
+                  </span>
+
+                  <span className="home-profile-copy">
+                    <small>Selamat datang</small>
+                    <b>{currentUser?.name?.split(" ")[0] || "Pengguna"}</b>
+                    <span>
+                      {currentUser?.role === "admin"
+                        ? "Administrator"
+                        : "Pengguna SawitVision"}
+                    </span>
+                  </span>
+
+                  <span className="home-profile-arrow">›</span>
+                </button>
               )}
             </section>
 
@@ -3058,10 +3183,7 @@ function App() {
               <section className="loading-card">
                 <div className="spinner"></div>
                 <h2>Menganalisis Citra</h2>
-                <p>
-                  {uploadInfo ||
-                    "Model EfficientNetV2S sedang memproses gambar sawit."}
-                </p>
+                <p>{uploadInfo || "Sistem sedang memeriksa gambar sawit."}</p>
               </section>
             )}
 
@@ -3162,25 +3284,25 @@ function App() {
           <>
             <section className="header">
               <p className="eyebrow">Riwayat Prediksi</p>
-              <h1>History</h1>
+              <h1>Riwayat</h1>
               <p className="subtitle">
-                Riwayat prediksi tersimpan di Neon PostgreSQL dan gambar
-                tersimpan di Supabase Storage.
+                Semua hasil pemeriksaan yang tersimpan dapat dilihat kembali dan
+                diunduh dari halaman ini.
               </p>
             </section>
 
-            <section className="report-card">
+            <section className="report-card user-report-card">
               <div className="section-title-row">
                 <div>
                   <p className="result-label">Laporan Pengguna</p>
-                  <h2>Export Laporan Excel</h2>
+                  <h2>Unduh Laporan Excel</h2>
                 </div>
                 <span className="mini-badge">📊</span>
               </div>
 
               <p className="report-description">
-                Download seluruh hasil prediksi akun kamu dalam bentuk Excel
-                lengkap dengan tabel ringkasan, detail prediksi, dan grafik.
+                Unduh seluruh hasil pemeriksaan akun kamu dalam bentuk Excel,
+                lengkap dengan ringkasan dan detail setiap gambar.
               </p>
 
               <div className="report-filter-grid">
@@ -3665,7 +3787,7 @@ function App() {
               <div className="section-title-row">
                 <div>
                   <p className="result-label">Informasi Akun</p>
-                  <h2>Edit Profile</h2>
+                  <h2>Edit Profil</h2>
                 </div>
 
                 <span className="mini-badge">✏️</span>
@@ -3853,693 +3975,814 @@ function App() {
 
         {activeTab === "admin" && currentUser?.role === "admin" && (
           <>
-            <section className="admin-hero">
-              <div className="admin-hero-glow"></div>
-              <div className="admin-logo">⚙️</div>
-              <p className="eyebrow light">Admin Dashboard</p>
-              <h1>Kontrol Sistem</h1>
-              <p>
-                Pantau user, riwayat prediksi, dan status sistem SawitVision AI
-                secara global.
-              </p>
+            {adminPage === "overview" ? (
+              <section className="admin-hero admin-overview-hero">
+                <div className="admin-hero-glow"></div>
 
-              <button
-                className="admin-refresh-btn"
-                onClick={() => {
-                  fetchAdminStats();
-                  fetchAdminUsers();
-                  fetchAdminStorage();
-                  fetchAdminActivityLogs({ page: 1, reset: true });
-                }}
-                disabled={
-                  adminLoading ||
+                <div className="admin-overview-top">
+                  <div className="admin-logo">🧭</div>
+
+                  <button
+                    type="button"
+                    className="admin-theme-button"
+                    onClick={toggleTheme}
+                    aria-label="Ganti tema"
+                  >
+                    {theme === "dark" ? "☀️" : "🌙"}
+                  </button>
+                </div>
+
+                <p className="eyebrow light">Pusat Pengelolaan</p>
+                <h1>Dashboard Admin</h1>
+                <p>
+                  Pilih bagian yang ingin dibuka. Setiap fitur dipisahkan agar
+                  lebih rapi dan mudah digunakan.
+                </p>
+
+                <button
+                  className="admin-refresh-btn"
+                  onClick={() => {
+                    fetchAdminStats();
+                    fetchAdminUsers();
+                    fetchAdminStorage();
+                  }}
+                  disabled={
+                    adminLoading ||
+                    adminUsersLoading ||
+                    adminStorageLoading ||
+                    adminStorageCleanupLoading
+                  }
+                >
+                  {adminLoading ||
                   adminUsersLoading ||
                   adminStorageLoading ||
-                  adminStorageCleanupLoading ||
-                  adminActivityLoading
-                }
-              >
-                {adminLoading ||
-                adminUsersLoading ||
-                adminStorageLoading ||
-                adminStorageCleanupLoading ||
-                adminActivityLoading
-                  ? "Memuat..."
-                  : "Refresh Data"}
-              </button>
-            </section>
+                  adminStorageCleanupLoading
+                    ? "Memuat..."
+                    : "↻ Perbarui Ringkasan"}
+                </button>
+              </section>
+            ) : (
+              <section className="admin-subpage-header">
+                <button
+                  type="button"
+                  className="admin-back-button"
+                  onClick={() => setAdminPage("overview")}
+                >
+                  ← Kembali ke Dashboard
+                </button>
+
+                <div className="admin-subpage-heading">
+                  <span className="admin-subpage-icon">
+                    {ADMIN_PAGE_META[adminPage].icon}
+                  </span>
+
+                  <div>
+                    <p className="eyebrow">
+                      {ADMIN_PAGE_META[adminPage].eyebrow}
+                    </p>
+                    <h1>{ADMIN_PAGE_META[adminPage].title}</h1>
+                    <p>{ADMIN_PAGE_META[adminPage].description}</p>
+                  </div>
+                </div>
+              </section>
+            )}
 
             {adminError && (
               <section className="admin-alert-card">
-                <b>⚠️ Admin Error</b>
+                <b>⚠️ Terjadi Kendala</b>
                 <p>{adminError}</p>
               </section>
             )}
 
-            <section className="admin-card report-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="result-label">Laporan Sistem</p>
-                  <h2>Export Laporan Global</h2>
-                </div>
-                <span className="mini-badge">📈</span>
-              </div>
-
-              <p className="report-description">
-                Export seluruh data prediksi pengguna dalam bentuk Excel.
-                Laporan berisi dashboard, rekap setiap pengguna, seluruh
-                prediksi, dan visualisasi grafik.
-              </p>
-
-              <div className="report-filter-grid admin-report-filter-grid">
-                <label>
-                  Dari Tanggal
-                  <input
-                    type="date"
-                    value={adminReportStartDate}
-                    onChange={(event) => {
-                      setAdminReportStartDate(event.target.value);
-                      setAdminReportError("");
-                    }}
-                  />
-                </label>
-
-                <label>
-                  Sampai Tanggal
-                  <input
-                    type="date"
-                    value={adminReportEndDate}
-                    onChange={(event) => {
-                      setAdminReportEndDate(event.target.value);
-                      setAdminReportError("");
-                    }}
-                  />
-                </label>
-
-                <label>
-                  Pengguna
-                  <select
-                    value={adminReportUserId}
-                    onChange={(event) => {
-                      setAdminReportUserId(event.target.value);
-                      setAdminReportError("");
-                    }}
-                  >
-                    <option value="">Semua Pengguna</option>
-                    {adminUsers
-                      .filter((user) => user.role === "user")
-                      .map((user) => (
-                        <option value={user.id} key={user.id}>
-                          {user.name} — {user.email}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-
-                <label>
-                  Kelas Prediksi
-                  <select
-                    value={adminReportClass}
-                    onChange={(event) => {
-                      setAdminReportClass(event.target.value);
-                      setAdminReportError("");
-                    }}
-                  >
-                    <option value="">Semua Kelas</option>
-                    <option value="belum_masak">Belum Masak</option>
-                    <option value="masak">Masak</option>
-                    <option value="terlalu_masak">Terlalu Masak</option>
-                  </select>
-                </label>
-              </div>
-
-              {adminReportError && (
-                <div className="report-feedback error">
-                  ⚠️ {adminReportError}
-                </div>
-              )}
-
-              <div className="report-action-row">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => {
-                    setAdminReportStartDate("");
-                    setAdminReportEndDate("");
-                    setAdminReportUserId("");
-                    setAdminReportClass("");
-                    setAdminReportError("");
-                  }}
-                  disabled={adminReportLoading}
-                >
-                  Reset Filter
-                </button>
-
-                <button
-                  type="button"
-                  className="primary-btn"
-                  onClick={exportAdminExcelReport}
-                  disabled={adminReportLoading}
-                >
-                  {adminReportLoading
-                    ? "Membuat Laporan..."
-                    : "📥 Export Laporan Global"}
-                </button>
-              </div>
-            </section>
-
-            <section className="admin-grid-stats">
-              <div className="admin-stat-card highlight">
-                <span>👥</span>
-                <small>Total User</small>
-                <b>{adminLoading ? "..." : (adminStats?.users?.total ?? 0)}</b>
-              </div>
-
-              <div className="admin-stat-card">
-                <span>✅</span>
-                <small>User Aktif</small>
-                <b>{adminLoading ? "..." : (adminStats?.users?.active ?? 0)}</b>
-              </div>
-
-              <div className="admin-stat-card">
-                <span>📧</span>
-                <small>Email Verified</small>
-                <b>
-                  {adminLoading ? "..." : (adminStats?.users?.verified ?? 0)}
-                </b>
-              </div>
-
-              <div className="admin-stat-card highlight-orange">
-                <span>📊</span>
-                <small>Total Prediksi</small>
-                <b>
-                  {adminLoading ? "..." : (adminStats?.predictions?.total ?? 0)}
-                </b>
-              </div>
-            </section>
-
-            <section className="admin-card storage-admin-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="result-label">Monitoring Storage</p>
-                  <h2>Penyimpanan Aplikasi</h2>
-                </div>
-
-                <span className="mini-badge">💾</span>
-              </div>
-
-              {adminStorageLoading ? (
-                <div className="admin-empty-mini">
-                  <div className="spinner"></div>
-                  <p>Memuat statistik storage...</p>
-                </div>
-              ) : !adminStorage ? (
-                <div className="admin-empty-mini">
-                  <span>📭</span>
-                  <p>Data storage belum tersedia.</p>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className={`storage-status ${
-                      adminStorage.status || "safe"
-                    }`}
-                  >
-                    <span>
-                      {adminStorage.status === "critical"
-                        ? "🚨"
-                        : adminStorage.status === "warning"
-                          ? "⚠️"
-                          : "✅"}
-                    </span>
-
-                    <div>
-                      <b>
-                        {adminStorage.message ||
-                          "Penggunaan storage masih aman."}
-                      </b>
-                      <small>
-                        Estimasi penggunaan berdasarkan data prediksi.
-                      </small>
-                    </div>
+            {adminPage === "overview" && (
+              <>
+                <section className="admin-grid-stats">
+                  <div className="admin-stat-card highlight">
+                    <span>👥</span>
+                    <small>Total Pengguna</small>
+                    <b>
+                      {adminLoading ? "..." : (adminStats?.users?.total ?? 0)}
+                    </b>
                   </div>
 
-                  <div className="storage-percentage-row">
-                    <span>Storage Terpakai</span>
-                    <b>{adminStorage.usage?.percentage ?? 0}%</b>
+                  <div className="admin-stat-card">
+                    <span>✅</span>
+                    <small>Pengguna Aktif</small>
+                    <b>
+                      {adminLoading ? "..." : (adminStats?.users?.active ?? 0)}
+                    </b>
                   </div>
 
-                  <div className="storage-progress">
-                    <div
-                      className={`storage-progress-fill ${
-                        adminStorage.status || "safe"
-                      }`}
-                      style={{
-                        width: `${Math.min(
-                          Number(adminStorage.usage?.percentage || 0),
-                          100,
-                        )}%`,
-                      }}
-                    />
+                  <div className="admin-stat-card">
+                    <span>📧</span>
+                    <small>Email Terverifikasi</small>
+                    <b>
+                      {adminLoading
+                        ? "..."
+                        : (adminStats?.users?.verified ?? 0)}
+                    </b>
                   </div>
 
-                  <div className="storage-grid">
-                    <div>
-                      <span>Terpakai</span>
-                      <b>{adminStorage.usage?.estimated_mb ?? 0} MB</b>
-                    </div>
+                  <div className="admin-stat-card highlight-orange">
+                    <span>📊</span>
+                    <small>Total Pemeriksaan</small>
+                    <b>
+                      {adminLoading
+                        ? "..."
+                        : (adminStats?.predictions?.total ?? 0)}
+                    </b>
+                  </div>
+                </section>
 
+                <section className="admin-menu-section">
+                  <div className="section-title-row">
                     <div>
-                      <span>Sisa</span>
-                      <b>{adminStorage.remaining?.gb ?? 0} GB</b>
+                      <p className="result-label">Menu Pengelolaan</p>
+                      <h2>Pilih Fitur Admin</h2>
                     </div>
-
-                    <div>
-                      <span>Batas Internal</span>
-                      <b>{adminStorage.limit?.gb ?? 0} GB</b>
-                    </div>
-
-                    <div>
-                      <span>Total File</span>
-                      <b>{adminStorage.files?.total_storage_objects ?? 0}</b>
-                    </div>
-
-                    <div>
-                      <span>Processed</span>
-                      <b>{adminStorage.files?.processed_images ?? 0}</b>
-                    </div>
-
-                    <div>
-                      <span>Thumbnail</span>
-                      <b>{adminStorage.files?.thumbnail_images ?? 0}</b>
-                    </div>
+                    <span className="mini-badge">☰</span>
                   </div>
 
-                  <div className="storage-cleanup-panel">
-                    <div className="storage-cleanup-copy">
-                      <b>Bersihkan gambar lama</b>
-                      <small>
-                        File gambar akan dihapus dari Supabase, tetapi data
-                        hasil klasifikasi tetap tersimpan di riwayat.
-                      </small>
-                    </div>
-
-                    <div className="storage-cleanup-controls">
-                      <label htmlFor="storage-cleanup-limit">
-                        Jumlah record
-                      </label>
-
-                      <select
-                        id="storage-cleanup-limit"
-                        value={adminStorageCleanupLimit}
-                        onChange={(event) =>
-                          setAdminStorageCleanupLimit(
-                            Number(event.target.value),
-                          )
-                        }
-                        disabled={adminStorageCleanupLoading}
-                      >
-                        <option value={10}>10 gambar lama</option>
-                        <option value={25}>25 gambar lama</option>
-                        <option value={50}>50 gambar lama</option>
-                      </select>
-
-                      <button
-                        type="button"
-                        className="storage-cleanup-btn"
-                        onClick={handleAdminStorageCleanup}
-                        disabled={
-                          adminStorageCleanupLoading ||
-                          (adminStorage.files?.total_storage_objects ?? 0) === 0
-                        }
-                      >
-                        {adminStorageCleanupLoading
-                          ? "Membersihkan..."
-                          : "Bersihkan Gambar Lama"}
-                      </button>
-                    </div>
-
-                    {adminStorageCleanupMessage && (
-                      <div className="storage-cleanup-feedback success">
-                        ✅ {adminStorageCleanupMessage}
-                      </div>
-                    )}
-
-                    {adminStorageCleanupError && (
-                      <div className="storage-cleanup-feedback error">
-                        ⚠️ {adminStorageCleanupError}
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="storage-note">
-                    Nilai penggunaan merupakan estimasi internal aplikasi dan
-                    dapat berbeda dengan angka resmi pada dashboard Supabase
-                    Storage.
+                  <p className="admin-menu-intro">
+                    Buka satu menu untuk melihat informasi yang dibutuhkan tanpa
+                    menumpuk semua data dalam satu halaman.
                   </p>
-                </>
-              )}
-            </section>
 
-            <section className="admin-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="result-label">Distribusi Global</p>
-                  <h2>Prediksi Semua User</h2>
-                </div>
-                <span className="mini-badge">🌾</span>
-              </div>
-
-              <div className="admin-class-grid">
-                {["belum_masak", "masak", "terlalu_masak"].map((className) => {
-                  const itemInfo = getClassInfo(className);
-                  const classData =
-                    adminStats?.predictions?.by_class?.[className];
-
-                  return (
-                    <div
-                      className={`admin-class-card ${itemInfo.color}`}
-                      key={className}
-                    >
-                      <div>
-                        <span>{itemInfo.icon}</span>
-                        <b>{itemInfo.title}</b>
-                      </div>
-                      <strong>{classData?.total ?? 0}</strong>
-                      <small>
-                        Avg Confidence{" "}
-                        {Number(classData?.avg_confidence || 0).toFixed(1)}%
-                      </small>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="admin-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="result-label">Aktivitas Terbaru</p>
-                  <h2>Recent Predictions</h2>
-                </div>
-                <span className="mini-badge">🧾</span>
-              </div>
-
-              <div className="admin-recent-list">
-                {(adminStats?.predictions?.recent || []).length === 0 ? (
-                  <div className="admin-empty-mini">
-                    <span>📭</span>
-                    <p>Belum ada prediksi terbaru.</p>
-                  </div>
-                ) : (
-                  adminStats.predictions.recent.map((item) => {
-                    const itemInfo = getClassInfo(item.predicted_class);
-
-                    return (
-                      <div className="admin-recent-item" key={item.id}>
-                        <div className="admin-recent-icon">{itemInfo.icon}</div>
-                        <div>
-                          <b>{itemInfo.title}</b>
-                          <span>
-                            {item.user_name} • {item.user_email}
-                          </span>
-                          <small>{formatDateTime(item.created_at)}</small>
-                        </div>
-                        <strong>
-                          {Number(item.confidence || 0).toFixed(1)}%
-                        </strong>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </section>
-
-            <section className="admin-card admin-activity-section">
-              <div className="section-title-row">
-                <div>
-                  <p className="result-label">Audit Sistem</p>
-                  <h2>Activity Log</h2>
-                </div>
-                <span className="mini-badge">🛡️</span>
-              </div>
-
-              <form
-                className="admin-activity-toolbar"
-                onSubmit={handleAdminActivitySearch}
-              >
-                <input
-                  type="search"
-                  value={adminActivitySearchInput}
-                  onChange={(event) =>
-                    setAdminActivitySearchInput(event.target.value)
-                  }
-                  placeholder="Cari nama, email, atau aktivitas..."
-                  aria-label="Cari activity log"
-                />
-
-                <select
-                  value={adminActivityFilter}
-                  onChange={handleAdminActivityFilter}
-                  aria-label="Filter jenis aktivitas"
-                >
-                  <option value="">Semua aktivitas</option>
-                  <option value="REGISTER">Registrasi</option>
-                  <option value="LOGIN">Login berhasil</option>
-                  <option value="LOGIN_FAILED">Login gagal</option>
-                  <option value="VERIFY_EMAIL">Verifikasi email</option>
-                  <option value="FORGOT_PASSWORD">Lupa password</option>
-                  <option value="RESET_PASSWORD">Reset password</option>
-                  <option value="CHANGE_PASSWORD">Ganti password</option>
-                  <option value="CREATE_PREDICTION">Prediksi</option>
-                  <option value="DELETE_HISTORY">Hapus riwayat</option>
-                  <option value="ADMIN_ACTIVATE_USER">Aktifkan user</option>
-                  <option value="ADMIN_DEACTIVATE_USER">
-                    Nonaktifkan user
-                  </option>
-                </select>
-
-                <button type="submit" className="admin-activity-search-btn">
-                  🔎 Cari
-                </button>
-
-                {(adminActivitySearch || adminActivityFilter) && (
-                  <button
-                    type="button"
-                    className="admin-activity-reset-btn"
-                    onClick={() => {
-                      setAdminActivitySearchInput("");
-                      setAdminActivitySearch("");
-                      setAdminActivityFilter("");
-                      fetchAdminActivityLogs({
-                        page: 1,
-                        reset: true,
-                        action: "",
-                        search: "",
-                      });
-                    }}
-                  >
-                    Reset
-                  </button>
-                )}
-              </form>
-
-              {adminActivityError && (
-                <div className="admin-activity-error">
-                  ⚠️ {adminActivityError}
-                </div>
-              )}
-
-              {adminActivityLoading ? (
-                <div className="admin-empty-mini">
-                  <div className="spinner"></div>
-                  <p>Memuat activity log...</p>
-                </div>
-              ) : adminActivityLogs.length === 0 ? (
-                <div className="admin-empty-mini">
-                  <span>📭</span>
-                  <p>Tidak ada activity log yang sesuai.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="admin-activity-list">
-                    {adminActivityLogs.map((log) => {
-                      const actionInfo = getActivityActionInfo(log.action);
-                      const primaryUser = log.target_user || log.actor_user;
-
-                      return (
-                        <article className="admin-activity-item" key={log.id}>
-                          <div
-                            className={`admin-activity-icon ${actionInfo.tone}`}
-                          >
-                            {actionInfo.icon}
-                          </div>
-
-                          <div className="admin-activity-content">
-                            <div className="admin-activity-heading">
-                              <b>{actionInfo.label}</b>
-                              <small>{formatDateTime(log.created_at)}</small>
-                            </div>
-
-                            <p>
-                              {log.description || "Aktivitas sistem tercatat."}
-                            </p>
-
-                            <div className="admin-activity-meta">
-                              <span>
-                                👤{" "}
-                                {primaryUser?.name ||
-                                  "Pengguna tidak diketahui"}
-                              </span>
-                              <span>✉️ {primaryUser?.email || "-"}</span>
-                              <span>
-                                🌐 {log.ip_address || "IP tidak tersedia"}
-                              </span>
-                            </div>
-
-                            {log.actor_user &&
-                              log.target_user &&
-                              log.actor_user.id !== log.target_user.id && (
-                                <small className="admin-activity-actor">
-                                  Dilakukan oleh:{" "}
-                                  {log.actor_user.name || "Admin"} (
-                                  {log.actor_user.email || "-"})
-                                </small>
-                              )}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-
-                  <div className="admin-activity-pagination">
-                    <small>
-                      Halaman {adminActivityPage} dari {adminActivityTotalPages}
-                    </small>
-
-                    {adminActivityHasMore && (
+                  <div className="admin-menu-grid">
+                    {ADMIN_MENU_ITEMS.map((item) => (
                       <button
                         type="button"
-                        onClick={() =>
-                          fetchAdminActivityLogs({
-                            page: adminActivityPage + 1,
-                            reset: false,
-                          })
-                        }
-                        disabled={adminActivityLoadingMore}
+                        className="admin-menu-card"
+                        key={item.id}
+                        onClick={() => setAdminPage(item.id)}
                       >
-                        {adminActivityLoadingMore
-                          ? "Memuat..."
-                          : "Muat Log Berikutnya"}
+                        <span className="admin-menu-icon">{item.icon}</span>
+
+                        <span className="admin-menu-copy">
+                          <b>{item.title}</b>
+                          <small>{item.description}</small>
+                        </span>
+
+                        <span className="admin-menu-arrow">›</span>
                       </button>
-                    )}
+                    ))}
                   </div>
-                </>
-              )}
-            </section>
+                </section>
+              </>
+            )}
 
-            <section className="admin-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="result-label">Manajemen User</p>
-                  <h2>Daftar Pengguna</h2>
-                </div>
-                <span className="mini-badge">👤</span>
-              </div>
+            {adminPage === "reports" && (
+              <>
+                <section className="admin-card report-card">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="result-label">Laporan Sistem</p>
+                      <h2>Unduh Laporan Global</h2>
+                    </div>
+                    <span className="mini-badge">📈</span>
+                  </div>
 
-              {adminUsersLoading ? (
-                <div className="admin-empty-mini">
-                  <div className="spinner"></div>
-                  <p>Memuat daftar user...</p>
-                </div>
-              ) : adminUsers.length === 0 ? (
-                <div className="admin-empty-mini">
-                  <span>📭</span>
-                  <p>Belum ada user.</p>
-                </div>
-              ) : (
-                <div className="admin-user-list">
-                  {adminUsers.map((user) => {
-                    const isSelf = user.id === currentUser?.id;
-                    const isLoadingAction = adminActionLoadingId === user.id;
+                  <p className="report-description">
+                    Unduh data hasil pemeriksaan seluruh pengguna dalam bentuk
+                    Excel. Gunakan filter untuk memilih periode, pengguna, dan
+                    kelas hasil yang dibutuhkan.
+                  </p>
 
-                    return (
-                      <div className="admin-user-item" key={user.id}>
-                        <div className="admin-user-avatar">
-                          {user.name
-                            ? user.name
-                                .split(" ")
-                                .map((word) => word[0])
-                                .join("")
-                                .slice(0, 2)
-                                .toUpperCase()
-                            : "U"}
+                  <div className="report-filter-grid admin-report-filter-grid">
+                    <label>
+                      Dari Tanggal
+                      <input
+                        type="date"
+                        value={adminReportStartDate}
+                        onChange={(event) => {
+                          setAdminReportStartDate(event.target.value);
+                          setAdminReportError("");
+                        }}
+                      />
+                    </label>
+
+                    <label>
+                      Sampai Tanggal
+                      <input
+                        type="date"
+                        value={adminReportEndDate}
+                        onChange={(event) => {
+                          setAdminReportEndDate(event.target.value);
+                          setAdminReportError("");
+                        }}
+                      />
+                    </label>
+
+                    <label>
+                      Pengguna
+                      <select
+                        value={adminReportUserId}
+                        onChange={(event) => {
+                          setAdminReportUserId(event.target.value);
+                          setAdminReportError("");
+                        }}
+                      >
+                        <option value="">Semua Pengguna</option>
+                        {adminUsers
+                          .filter((user) => user.role === "user")
+                          .map((user) => (
+                            <option value={user.id} key={user.id}>
+                              {user.name} — {user.email}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+
+                    <label>
+                      Kelas Prediksi
+                      <select
+                        value={adminReportClass}
+                        onChange={(event) => {
+                          setAdminReportClass(event.target.value);
+                          setAdminReportError("");
+                        }}
+                      >
+                        <option value="">Semua Kelas</option>
+                        <option value="belum_masak">Belum Masak</option>
+                        <option value="masak">Masak</option>
+                        <option value="terlalu_masak">Terlalu Masak</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {adminReportError && (
+                    <div className="report-feedback error">
+                      ⚠️ {adminReportError}
+                    </div>
+                  )}
+
+                  <div className="report-action-row">
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={() => {
+                        setAdminReportStartDate("");
+                        setAdminReportEndDate("");
+                        setAdminReportUserId("");
+                        setAdminReportClass("");
+                        setAdminReportError("");
+                      }}
+                      disabled={adminReportLoading}
+                    >
+                      Reset Filter
+                    </button>
+
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      onClick={exportAdminExcelReport}
+                      disabled={adminReportLoading}
+                    >
+                      {adminReportLoading
+                        ? "Membuat Laporan..."
+                        : "📥 Unduh Laporan Global"}
+                    </button>
+                  </div>
+                </section>
+              </>
+            )}
+
+            {adminPage === "storage" && (
+              <>
+                <section className="admin-card storage-admin-card">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="result-label">Pemantauan Penyimpanan</p>
+                      <h2>Penyimpanan Gambar</h2>
+                    </div>
+
+                    <span className="mini-badge">💾</span>
+                  </div>
+
+                  {adminStorageLoading ? (
+                    <div className="admin-empty-mini">
+                      <div className="spinner"></div>
+                      <p>Memuat statistik storage...</p>
+                    </div>
+                  ) : !adminStorage ? (
+                    <div className="admin-empty-mini">
+                      <span>📭</span>
+                      <p>Data storage belum tersedia.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`storage-status ${
+                          adminStorage.status || "safe"
+                        }`}
+                      >
+                        <span>
+                          {adminStorage.status === "critical"
+                            ? "🚨"
+                            : adminStorage.status === "warning"
+                              ? "⚠️"
+                              : "✅"}
+                        </span>
+
+                        <div>
+                          <b>
+                            {adminStorage.message ||
+                              "Penggunaan storage masih aman."}
+                          </b>
+                          <small>
+                            Estimasi penggunaan berdasarkan data prediksi.
+                          </small>
+                        </div>
+                      </div>
+
+                      <div className="storage-percentage-row">
+                        <span>Storage Terpakai</span>
+                        <b>{adminStorage.usage?.percentage ?? 0}%</b>
+                      </div>
+
+                      <div className="storage-progress">
+                        <div
+                          className={`storage-progress-fill ${
+                            adminStorage.status || "safe"
+                          }`}
+                          style={{
+                            width: `${Math.min(
+                              Number(adminStorage.usage?.percentage || 0),
+                              100,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+
+                      <div className="storage-grid">
+                        <div>
+                          <span>Terpakai</span>
+                          <b>{adminStorage.usage?.estimated_mb ?? 0} MB</b>
                         </div>
 
-                        <div className="admin-user-main">
-                          <b>{user.name || "User"}</b>
-                          <span>{user.email}</span>
-
-                          <div className="admin-user-badges">
-                            <small
-                              className={
-                                user.role === "admin"
-                                  ? "admin-badge role-admin"
-                                  : "admin-badge"
-                              }
-                            >
-                              {user.role}
-                            </small>
-                            <small
-                              className={
-                                user.is_verified
-                                  ? "admin-badge verified"
-                                  : "admin-badge muted"
-                              }
-                            >
-                              {user.is_verified ? "Verified" : "Unverified"}
-                            </small>
-                            <small
-                              className={
-                                user.is_active
-                                  ? "admin-badge active"
-                                  : "admin-badge inactive"
-                              }
-                            >
-                              {user.is_active ? "Active" : "Inactive"}
-                            </small>
-                          </div>
+                        <div>
+                          <span>Sisa</span>
+                          <b>{adminStorage.remaining?.gb ?? 0} GB</b>
                         </div>
 
-                        <div className="admin-user-side">
-                          <small>{user.total_predictions || 0} prediksi</small>
-                          <button
-                            className={
-                              user.is_active
-                                ? "admin-action-btn danger"
-                                : "admin-action-btn success"
+                        <div>
+                          <span>Batas Internal</span>
+                          <b>{adminStorage.limit?.gb ?? 0} GB</b>
+                        </div>
+
+                        <div>
+                          <span>Total File</span>
+                          <b>
+                            {adminStorage.files?.total_storage_objects ?? 0}
+                          </b>
+                        </div>
+
+                        <div>
+                          <span>Processed</span>
+                          <b>{adminStorage.files?.processed_images ?? 0}</b>
+                        </div>
+
+                        <div>
+                          <span>Thumbnail</span>
+                          <b>{adminStorage.files?.thumbnail_images ?? 0}</b>
+                        </div>
+                      </div>
+
+                      <div className="storage-cleanup-panel">
+                        <div className="storage-cleanup-copy">
+                          <b>Bersihkan gambar lama</b>
+                          <small>
+                            File gambar akan dihapus dari Supabase, tetapi data
+                            hasil klasifikasi tetap tersimpan di riwayat.
+                          </small>
+                        </div>
+
+                        <div className="storage-cleanup-controls">
+                          <label htmlFor="storage-cleanup-limit">
+                            Jumlah record
+                          </label>
+
+                          <select
+                            id="storage-cleanup-limit"
+                            value={adminStorageCleanupLimit}
+                            onChange={(event) =>
+                              setAdminStorageCleanupLimit(
+                                Number(event.target.value),
+                              )
                             }
-                            onClick={() => handleToggleUserStatus(user)}
-                            disabled={isSelf || isLoadingAction}
-                            title={
-                              isSelf
-                                ? "Tidak bisa ubah status akun sendiri"
-                                : "Ubah status user"
+                            disabled={adminStorageCleanupLoading}
+                          >
+                            <option value={10}>10 gambar lama</option>
+                            <option value={25}>25 gambar lama</option>
+                            <option value={50}>50 gambar lama</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            className="storage-cleanup-btn"
+                            onClick={handleAdminStorageCleanup}
+                            disabled={
+                              adminStorageCleanupLoading ||
+                              (adminStorage.files?.total_storage_objects ??
+                                0) === 0
                             }
                           >
-                            {isLoadingAction
-                              ? "..."
-                              : user.is_active
-                                ? "Nonaktifkan"
-                                : "Aktifkan"}
+                            {adminStorageCleanupLoading
+                              ? "Membersihkan..."
+                              : "Bersihkan Gambar Lama"}
                           </button>
                         </div>
+
+                        {adminStorageCleanupMessage && (
+                          <div className="storage-cleanup-feedback success">
+                            ✅ {adminStorageCleanupMessage}
+                          </div>
+                        )}
+
+                        {adminStorageCleanupError && (
+                          <div className="storage-cleanup-feedback error">
+                            ⚠️ {adminStorageCleanupError}
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
+
+                      <p className="storage-note">
+                        Nilai penggunaan merupakan estimasi internal aplikasi
+                        dan dapat berbeda dengan angka resmi pada dashboard
+                        Supabase Storage.
+                      </p>
+                    </>
+                  )}
+                </section>
+              </>
+            )}
+
+            {adminPage === "predictions" && (
+              <>
+                <section className="admin-card">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="result-label">Ringkasan Hasil</p>
+                      <h2>Hasil Semua Pengguna</h2>
+                    </div>
+                    <span className="mini-badge">🌾</span>
+                  </div>
+
+                  <div className="admin-class-grid">
+                    {["belum_masak", "masak", "terlalu_masak"].map(
+                      (className) => {
+                        const itemInfo = getClassInfo(className);
+                        const classData =
+                          adminStats?.predictions?.by_class?.[className];
+
+                        return (
+                          <div
+                            className={`admin-class-card ${itemInfo.color}`}
+                            key={className}
+                          >
+                            <div>
+                              <span>{itemInfo.icon}</span>
+                              <b>{itemInfo.title}</b>
+                            </div>
+                            <strong>{classData?.total ?? 0}</strong>
+                            <small>
+                              Avg Confidence{" "}
+                              {Number(classData?.avg_confidence || 0).toFixed(
+                                1,
+                              )}
+                              %
+                            </small>
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+                </section>
+
+                <section className="admin-card">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="result-label">Pemeriksaan Terbaru</p>
+                      <h2>Hasil Terbaru</h2>
+                    </div>
+                    <span className="mini-badge">🧾</span>
+                  </div>
+
+                  <div className="admin-recent-list">
+                    {(adminStats?.predictions?.recent || []).length === 0 ? (
+                      <div className="admin-empty-mini">
+                        <span>📭</span>
+                        <p>Belum ada prediksi terbaru.</p>
+                      </div>
+                    ) : (
+                      adminStats.predictions.recent.map((item) => {
+                        const itemInfo = getClassInfo(item.predicted_class);
+
+                        return (
+                          <div className="admin-recent-item" key={item.id}>
+                            <div className="admin-recent-icon">
+                              {itemInfo.icon}
+                            </div>
+                            <div>
+                              <b>{itemInfo.title}</b>
+                              <span>
+                                {item.user_name} • {item.user_email}
+                              </span>
+                              <small>{formatDateTime(item.created_at)}</small>
+                            </div>
+                            <strong>
+                              {Number(item.confidence || 0).toFixed(1)}%
+                            </strong>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+              </>
+            )}
+
+            {adminPage === "activity" && (
+              <>
+                <section className="admin-card admin-activity-section">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="result-label">Pemantauan Sistem</p>
+                      <h2>Catatan Aktivitas</h2>
+                    </div>
+                    <span className="mini-badge">🛡️</span>
+                  </div>
+
+                  <form
+                    className="admin-activity-toolbar"
+                    onSubmit={handleAdminActivitySearch}
+                  >
+                    <input
+                      type="search"
+                      value={adminActivitySearchInput}
+                      onChange={(event) =>
+                        setAdminActivitySearchInput(event.target.value)
+                      }
+                      placeholder="Cari nama, email, atau aktivitas..."
+                      aria-label="Cari activity log"
+                    />
+
+                    <select
+                      value={adminActivityFilter}
+                      onChange={handleAdminActivityFilter}
+                      aria-label="Filter jenis aktivitas"
+                    >
+                      <option value="">Semua aktivitas</option>
+                      <option value="REGISTER">Registrasi</option>
+                      <option value="LOGIN">Login berhasil</option>
+                      <option value="LOGIN_FAILED">Login gagal</option>
+                      <option value="VERIFY_EMAIL">Verifikasi email</option>
+                      <option value="FORGOT_PASSWORD">Lupa password</option>
+                      <option value="RESET_PASSWORD">Reset password</option>
+                      <option value="CHANGE_PASSWORD">Ganti password</option>
+                      <option value="CREATE_PREDICTION">Prediksi</option>
+                      <option value="DELETE_HISTORY">Hapus riwayat</option>
+                      <option value="ADMIN_ACTIVATE_USER">Aktifkan user</option>
+                      <option value="ADMIN_DEACTIVATE_USER">
+                        Nonaktifkan user
+                      </option>
+                    </select>
+
+                    <button type="submit" className="admin-activity-search-btn">
+                      🔎 Cari
+                    </button>
+
+                    {(adminActivitySearch || adminActivityFilter) && (
+                      <button
+                        type="button"
+                        className="admin-activity-reset-btn"
+                        onClick={() => {
+                          setAdminActivitySearchInput("");
+                          setAdminActivitySearch("");
+                          setAdminActivityFilter("");
+                          fetchAdminActivityLogs({
+                            page: 1,
+                            reset: true,
+                            action: "",
+                            search: "",
+                          });
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </form>
+
+                  {adminActivityError && (
+                    <div className="admin-activity-error">
+                      ⚠️ {adminActivityError}
+                    </div>
+                  )}
+
+                  {adminActivityLoading ? (
+                    <div className="admin-empty-mini">
+                      <div className="spinner"></div>
+                      <p>Memuat activity log...</p>
+                    </div>
+                  ) : adminActivityLogs.length === 0 ? (
+                    <div className="admin-empty-mini">
+                      <span>📭</span>
+                      <p>Tidak ada activity log yang sesuai.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="admin-activity-list">
+                        {adminActivityLogs.map((log) => {
+                          const actionInfo = getActivityActionInfo(log.action);
+                          const primaryUser = log.target_user || log.actor_user;
+
+                          return (
+                            <article
+                              className="admin-activity-item"
+                              key={log.id}
+                            >
+                              <div
+                                className={`admin-activity-icon ${actionInfo.tone}`}
+                              >
+                                {actionInfo.icon}
+                              </div>
+
+                              <div className="admin-activity-content">
+                                <div className="admin-activity-heading">
+                                  <b>{actionInfo.label}</b>
+                                  <small>
+                                    {formatDateTime(log.created_at)}
+                                  </small>
+                                </div>
+
+                                <p>
+                                  {log.description ||
+                                    "Aktivitas sistem tercatat."}
+                                </p>
+
+                                <div className="admin-activity-meta">
+                                  <span>
+                                    👤{" "}
+                                    {primaryUser?.name ||
+                                      "Pengguna tidak diketahui"}
+                                  </span>
+                                  <span>✉️ {primaryUser?.email || "-"}</span>
+                                  <span>
+                                    🌐 {log.ip_address || "IP tidak tersedia"}
+                                  </span>
+                                </div>
+
+                                {log.actor_user &&
+                                  log.target_user &&
+                                  log.actor_user.id !== log.target_user.id && (
+                                    <small className="admin-activity-actor">
+                                      Dilakukan oleh:{" "}
+                                      {log.actor_user.name || "Admin"} (
+                                      {log.actor_user.email || "-"})
+                                    </small>
+                                  )}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+
+                      <div className="admin-activity-pagination">
+                        <small>
+                          Halaman {adminActivityPage} dari{" "}
+                          {adminActivityTotalPages}
+                        </small>
+
+                        {adminActivityHasMore && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              fetchAdminActivityLogs({
+                                page: adminActivityPage + 1,
+                                reset: false,
+                              })
+                            }
+                            disabled={adminActivityLoadingMore}
+                          >
+                            {adminActivityLoadingMore
+                              ? "Memuat..."
+                              : "Muat Log Berikutnya"}
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </section>
+              </>
+            )}
+
+            {adminPage === "users" && (
+              <>
+                <section className="admin-card">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="result-label">Manajemen Pengguna</p>
+                      <h2>Daftar Pengguna</h2>
+                    </div>
+                    <span className="mini-badge">👤</span>
+                  </div>
+
+                  {adminUsersLoading ? (
+                    <div className="admin-empty-mini">
+                      <div className="spinner"></div>
+                      <p>Memuat daftar user...</p>
+                    </div>
+                  ) : adminUsers.length === 0 ? (
+                    <div className="admin-empty-mini">
+                      <span>📭</span>
+                      <p>Belum ada user.</p>
+                    </div>
+                  ) : (
+                    <div className="admin-user-list">
+                      {adminUsers.map((user) => {
+                        const isSelf = user.id === currentUser?.id;
+                        const isLoadingAction =
+                          adminActionLoadingId === user.id;
+
+                        return (
+                          <div className="admin-user-item" key={user.id}>
+                            <div className="admin-user-avatar">
+                              {user.name
+                                ? user.name
+                                    .split(" ")
+                                    .map((word) => word[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()
+                                : "U"}
+                            </div>
+
+                            <div className="admin-user-main">
+                              <b>{user.name || "User"}</b>
+                              <span>{user.email}</span>
+
+                              <div className="admin-user-badges">
+                                <small
+                                  className={
+                                    user.role === "admin"
+                                      ? "admin-badge role-admin"
+                                      : "admin-badge"
+                                  }
+                                >
+                                  {user.role}
+                                </small>
+                                <small
+                                  className={
+                                    user.is_verified
+                                      ? "admin-badge verified"
+                                      : "admin-badge muted"
+                                  }
+                                >
+                                  {user.is_verified ? "Verified" : "Unverified"}
+                                </small>
+                                <small
+                                  className={
+                                    user.is_active
+                                      ? "admin-badge active"
+                                      : "admin-badge inactive"
+                                  }
+                                >
+                                  {user.is_active ? "Active" : "Inactive"}
+                                </small>
+                              </div>
+                            </div>
+
+                            <div className="admin-user-side">
+                              <small>{user.total_predictions || 0} hasil</small>
+                              <button
+                                className={
+                                  user.is_active
+                                    ? "admin-action-btn danger"
+                                    : "admin-action-btn success"
+                                }
+                                onClick={() => handleToggleUserStatus(user)}
+                                disabled={isSelf || isLoadingAction}
+                                title={
+                                  isSelf
+                                    ? "Tidak bisa ubah status akun sendiri"
+                                    : "Ubah status user"
+                                }
+                              >
+                                {isLoadingAction
+                                  ? "..."
+                                  : user.is_active
+                                    ? "Nonaktifkan"
+                                    : "Aktifkan"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
           </>
         )}
 
@@ -4553,53 +4796,53 @@ function App() {
               </div>
 
               <p className="eyebrow light">Tentang Aplikasi</p>
-              <h1>SawitVision AI</h1>
+              <h1>SawitVision</h1>
               <p>
-                Aplikasi klasifikasi tingkat kematangan buah kelapa sawit
-                berbasis citra digital dan Deep Learning.
+                Aplikasi untuk membantu memeriksa tingkat kematangan buah kelapa
+                sawit melalui foto.
               </p>
 
-              <div className="version-pill">Versi 1.0.0</div>
+              <div className="version-pill">Versi 2.0</div>
             </section>
 
             <section className="about-card premium-card">
               <div className="section-title-row">
                 <div>
-                  <p className="result-label">Profil Sistem</p>
-                  <h2>Informasi Aplikasi</h2>
+                  <p className="result-label">Informasi Sistem</p>
+                  <h2>Fitur Utama</h2>
                 </div>
-                <span className="mini-badge">AI</span>
+                <span className="mini-badge">📱</span>
               </div>
 
               <div className="premium-info-grid">
                 <div>
-                  <span>Model AI</span>
-                  <b>EfficientNetV2S</b>
+                  <span>Cara Pemeriksaan</span>
+                  <b>Analisis foto secara otomatis</b>
                 </div>
 
                 <div>
-                  <span>Metode</span>
-                  <b>Deep Learning</b>
+                  <span>Sumber Foto</span>
+                  <b>Kamera atau galeri perangkat</b>
                 </div>
 
                 <div>
-                  <span>Jenis Tugas</span>
-                  <b>Klasifikasi Citra</b>
+                  <span>Hasil Kematangan</span>
+                  <b>Belum Masak, Masak, dan Terlalu Masak</b>
                 </div>
 
                 <div>
-                  <span>Input</span>
-                  <b>Kamera & Galeri</b>
+                  <span>Informasi Hasil</span>
+                  <b>Tingkat keyakinan dan saran penanganan</b>
                 </div>
 
                 <div>
-                  <span>Kelas</span>
-                  <b>Belum Masak, Masak, Terlalu Masak</b>
+                  <span>Riwayat</span>
+                  <b>Hasil pemeriksaan tersimpan pada akun</b>
                 </div>
 
                 <div>
-                  <span>Output</span>
-                  <b>Label, Confidence, Probabilitas, Rekomendasi</b>
+                  <span>Laporan</span>
+                  <b>Data hasil dapat diunduh dalam format Excel</b>
                 </div>
               </div>
             </section>
@@ -4611,20 +4854,20 @@ function App() {
                 <div className="developer-avatar-premium">MF</div>
 
                 <div>
-                  <p className="result-label">Developer</p>
+                  <p className="result-label">Pengembang</p>
                   <h2>Muhammad Ferdy Oktavian</h2>
                   <p>
-                    Pengembang aplikasi klasifikasi kematangan buah kelapa sawit
-                    menggunakan model EfficientNetV2S dan teknologi web modern.
+                    SawitVision dikembangkan sebagai aplikasi pendukung untuk
+                    membantu pemeriksaan awal kematangan buah kelapa sawit.
                   </p>
                 </div>
               </div>
 
               <div className="developer-tags">
-                <span>React</span>
-                <span>FastAPI</span>
-                <span>TensorFlow</span>
-                <span>Computer Vision</span>
+                <span>Aplikasi Web</span>
+                <span>Pemeriksaan Foto</span>
+                <span>Riwayat Hasil</span>
+                <span>Laporan Data</span>
               </div>
             </section>
 
@@ -4641,19 +4884,22 @@ function App() {
                 <div>
                   <span>01</span>
                   <p>
-                    Membantu proses identifikasi tingkat kematangan buah sawit.
+                    Membantu memeriksa tingkat kematangan buah sawit dengan
+                    lebih praktis.
                   </p>
                 </div>
 
                 <div>
                   <span>02</span>
-                  <p>Memberikan hasil prediksi berupa label dan confidence.</p>
+                  <p>
+                    Menampilkan hasil dan tingkat keyakinan untuk setiap foto.
+                  </p>
                 </div>
 
                 <div>
                   <span>03</span>
                   <p>
-                    Menyediakan rekomendasi awal berdasarkan hasil klasifikasi.
+                    Menyimpan riwayat pemeriksaan agar dapat dilihat kembali.
                   </p>
                 </div>
               </div>
@@ -4662,10 +4908,10 @@ function App() {
             <section className="about-note-card">
               <b>Catatan Penggunaan</b>
               <p>
-                Hasil prediksi digunakan sebagai alat bantu awal. Keputusan
+                Hasil aplikasi digunakan sebagai bantuan awal. Keputusan di
                 lapangan tetap perlu mempertimbangkan kondisi buah secara
                 langsung, pencahayaan, jarak pengambilan gambar, dan pengalaman
-                pengguna di lapangan.
+                pengguna.
               </p>
             </section>
           </>
@@ -4685,7 +4931,7 @@ function App() {
             onClick={() => setActiveTab("home")}
           >
             🏠
-            <span>Home</span>
+            <span>Beranda</span>
           </button>
 
           <button
@@ -4693,7 +4939,7 @@ function App() {
             onClick={() => setActiveTab("history")}
           >
             📊
-            <span>History</span>
+            <span>Riwayat</span>
           </button>
 
           <button
@@ -4701,13 +4947,16 @@ function App() {
             onClick={() => setActiveTab("profile")}
           >
             👤
-            <span>Profile</span>
+            <span>Profil</span>
           </button>
 
           {currentUser?.role === "admin" && (
             <button
               className={activeTab === "admin" ? "nav-item active" : "nav-item"}
-              onClick={() => setActiveTab("admin")}
+              onClick={() => {
+                setActiveTab("admin");
+                setAdminPage("overview");
+              }}
             >
               ⚙️
               <span>Admin</span>
@@ -4719,7 +4968,7 @@ function App() {
             onClick={() => setActiveTab("about")}
           >
             ℹ️
-            <span>About</span>
+            <span>Tentang</span>
           </button>
         </nav>
 
