@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
-import panduanSpam from "./assets/panduan-folder-spam.jpg";
+import panduanSpam from "./assets/panduan-folder-spam.JPG";
 
 const BASE_API_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
