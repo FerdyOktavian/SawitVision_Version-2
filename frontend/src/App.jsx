@@ -178,6 +178,15 @@ function App() {
   const [authSuccess, setAuthSuccess] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Kontrol tampil/sembunyikan password.
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+  const [showResetNewPassword, setShowResetNewPassword] = useState(false);
+  const [showResetConfirmPassword, setShowResetConfirmPassword] =
+    useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [authForm, setAuthForm] = useState({
     name: "",
     email: "",
@@ -2756,40 +2765,112 @@ function App() {
               <form className="auth-form" onSubmit={handleResetPasswordSubmit}>
                 <label>
                   Password Baru
-                  <input
-                    type="password"
-                    value={resetPasswordForm.newPassword}
-                    onChange={(event) => {
-                      setResetPasswordForm((prevForm) => ({
-                        ...prevForm,
-                        newPassword: event.target.value,
-                      }));
-                      setResetMessage("");
-                      setResetStatus("idle");
-                    }}
-                    placeholder="Masukkan password baru"
-                    minLength={6}
-                    required
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showResetNewPassword ? "text" : "password"}
+                      value={resetPasswordForm.newPassword}
+                      onChange={(event) => {
+                        setResetPasswordForm((prevForm) => ({
+                          ...prevForm,
+                          newPassword: event.target.value,
+                        }));
+                        setResetMessage("");
+                        setResetStatus("idle");
+                      }}
+                      placeholder="Masukkan password baru"
+                      minLength={6}
+                      required
+                      style={{ paddingRight: "52px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowResetNewPassword((prev) => !prev)}
+                      aria-label={
+                        showResetNewPassword
+                          ? "Sembunyikan password baru"
+                          : "Tampilkan password baru"
+                      }
+                      title={
+                        showResetNewPassword
+                          ? "Sembunyikan password"
+                          : "Tampilkan password"
+                      }
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        right: "8px",
+                        transform: "translateY(-50%)",
+                        width: "38px",
+                        height: "38px",
+                        padding: 0,
+                        border: "none",
+                        borderRadius: "12px",
+                        display: "grid",
+                        placeItems: "center",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                      }}
+                    >
+                      {showResetNewPassword ? "🙈" : "👁️"}
+                    </button>
+                  </div>
                 </label>
 
                 <label>
                   Konfirmasi Password
-                  <input
-                    type="password"
-                    value={resetPasswordForm.confirmPassword}
-                    onChange={(event) => {
-                      setResetPasswordForm((prevForm) => ({
-                        ...prevForm,
-                        confirmPassword: event.target.value,
-                      }));
-                      setResetMessage("");
-                      setResetStatus("idle");
-                    }}
-                    placeholder="Ulangi password baru"
-                    minLength={6}
-                    required
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showResetConfirmPassword ? "text" : "password"}
+                      value={resetPasswordForm.confirmPassword}
+                      onChange={(event) => {
+                        setResetPasswordForm((prevForm) => ({
+                          ...prevForm,
+                          confirmPassword: event.target.value,
+                        }));
+                        setResetMessage("");
+                        setResetStatus("idle");
+                      }}
+                      placeholder="Ulangi password baru"
+                      minLength={6}
+                      required
+                      style={{ paddingRight: "52px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowResetConfirmPassword((prev) => !prev)
+                      }
+                      aria-label={
+                        showResetConfirmPassword
+                          ? "Sembunyikan konfirmasi password"
+                          : "Tampilkan konfirmasi password"
+                      }
+                      title={
+                        showResetConfirmPassword
+                          ? "Sembunyikan password"
+                          : "Tampilkan password"
+                      }
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        right: "8px",
+                        transform: "translateY(-50%)",
+                        width: "38px",
+                        height: "38px",
+                        padding: 0,
+                        border: "none",
+                        borderRadius: "12px",
+                        display: "grid",
+                        placeItems: "center",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                      }}
+                    >
+                      {showResetConfirmPassword ? "🙈" : "👁️"}
+                    </button>
+                  </div>
                 </label>
 
                 {resetMessage && (
@@ -3074,15 +3155,50 @@ function App() {
 
                 <label>
                   Password
-                  <input
-                    type="password"
-                    name="password"
-                    value={authForm.password}
-                    onChange={handleAuthInputChange}
-                    placeholder="Minimal 6 karakter"
-                    minLength={6}
-                    required
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showAuthPassword ? "text" : "password"}
+                      name="password"
+                      value={authForm.password}
+                      onChange={handleAuthInputChange}
+                      placeholder="Minimal 6 karakter"
+                      minLength={6}
+                      required
+                      style={{ paddingRight: "52px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAuthPassword((prev) => !prev)}
+                      aria-label={
+                        showAuthPassword
+                          ? "Sembunyikan password"
+                          : "Tampilkan password"
+                      }
+                      title={
+                        showAuthPassword
+                          ? "Sembunyikan password"
+                          : "Tampilkan password"
+                      }
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        right: "8px",
+                        transform: "translateY(-50%)",
+                        width: "38px",
+                        height: "38px",
+                        padding: 0,
+                        border: "none",
+                        borderRadius: "12px",
+                        display: "grid",
+                        placeItems: "center",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                      }}
+                    >
+                      {showAuthPassword ? "🙈" : "👁️"}
+                    </button>
+                  </div>
                 </label>
 
                 {authMode === "login" && (
@@ -4141,41 +4257,134 @@ function App() {
               >
                 <label>
                   Password Lama
-                  <input
-                    type="password"
-                    name="oldPassword"
-                    value={changePasswordForm.oldPassword}
-                    onChange={handleChangePasswordInput}
-                    placeholder="Masukkan password lama"
-                    minLength={6}
-                    required
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showOldPassword ? "text" : "password"}
+                      name="oldPassword"
+                      value={changePasswordForm.oldPassword}
+                      onChange={handleChangePasswordInput}
+                      placeholder="Masukkan password lama"
+                      minLength={6}
+                      required
+                      style={{ paddingRight: "52px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOldPassword((prev) => !prev)}
+                      aria-label={
+                        showOldPassword
+                          ? "Sembunyikan password lama"
+                          : "Tampilkan password lama"
+                      }
+                      title={showOldPassword ? "Sembunyikan" : "Tampilkan"}
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        right: "8px",
+                        transform: "translateY(-50%)",
+                        width: "38px",
+                        height: "38px",
+                        padding: 0,
+                        border: "none",
+                        borderRadius: "12px",
+                        display: "grid",
+                        placeItems: "center",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                      }}
+                    >
+                      {showOldPassword ? "🙈" : "👁️"}
+                    </button>
+                  </div>
                 </label>
 
                 <label>
                   Password Baru
-                  <input
-                    type="password"
-                    name="newPassword"
-                    value={changePasswordForm.newPassword}
-                    onChange={handleChangePasswordInput}
-                    placeholder="Masukkan password baru"
-                    minLength={6}
-                    required
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      name="newPassword"
+                      value={changePasswordForm.newPassword}
+                      onChange={handleChangePasswordInput}
+                      placeholder="Masukkan password baru"
+                      minLength={6}
+                      required
+                      style={{ paddingRight: "52px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword((prev) => !prev)}
+                      aria-label={
+                        showNewPassword
+                          ? "Sembunyikan password baru"
+                          : "Tampilkan password baru"
+                      }
+                      title={showNewPassword ? "Sembunyikan" : "Tampilkan"}
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        right: "8px",
+                        transform: "translateY(-50%)",
+                        width: "38px",
+                        height: "38px",
+                        padding: 0,
+                        border: "none",
+                        borderRadius: "12px",
+                        display: "grid",
+                        placeItems: "center",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                      }}
+                    >
+                      {showNewPassword ? "🙈" : "👁️"}
+                    </button>
+                  </div>
                 </label>
 
                 <label>
                   Konfirmasi Password Baru
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={changePasswordForm.confirmPassword}
-                    onChange={handleChangePasswordInput}
-                    placeholder="Ulangi password baru"
-                    minLength={6}
-                    required
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      value={changePasswordForm.confirmPassword}
+                      onChange={handleChangePasswordInput}
+                      placeholder="Ulangi password baru"
+                      minLength={6}
+                      required
+                      style={{ paddingRight: "52px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      aria-label={
+                        showConfirmPassword
+                          ? "Sembunyikan konfirmasi password"
+                          : "Tampilkan konfirmasi password"
+                      }
+                      title={showConfirmPassword ? "Sembunyikan" : "Tampilkan"}
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        right: "8px",
+                        transform: "translateY(-50%)",
+                        width: "38px",
+                        height: "38px",
+                        padding: 0,
+                        border: "none",
+                        borderRadius: "12px",
+                        display: "grid",
+                        placeItems: "center",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                      }}
+                    >
+                      {showConfirmPassword ? "🙈" : "👁️"}
+                    </button>
+                  </div>
                 </label>
 
                 {changePasswordError && (
