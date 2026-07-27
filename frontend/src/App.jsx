@@ -1788,8 +1788,7 @@ function App() {
       if (isRegister) {
         setAuthMode("login");
         setAuthSuccess(
-          data.message ||
-            "Registrasi berhasil. Silakan cek email untuk verifikasi akun.",
+          "Pendaftaran berhasil. Silakan buka Gmail, lalu periksa Kotak Masuk dan folder Spam/Junk. Klik tautan verifikasi sebelum login.",
         );
         setAuthForm({
           name: "",
@@ -2942,8 +2941,10 @@ function App() {
             </h1>
             <p>
               {authMode === "forgot"
-                ? "Masukkan email akun kamu untuk menerima link reset password."
-                : "Login untuk menyimpan riwayat prediksi dan mengelola hasil klasifikasi sawit berdasarkan akun pengguna."}
+                ? "Masukkan email akun kamu untuk menerima tautan reset password."
+                : authMode === "register"
+                  ? "Buat akun terlebih dahulu agar hasil pemeriksaan dapat disimpan dan dilihat kembali."
+                  : "Masuk menggunakan akun yang sudah terdaftar untuk melanjutkan pemeriksaan sawit."}
             </p>
           </section>
 
@@ -2957,7 +2958,7 @@ function App() {
                   setAuthError("");
                 }}
               >
-                Login
+                Masuk
               </button>
 
               <button
@@ -2968,9 +2969,31 @@ function App() {
                   setAuthError("");
                 }}
               >
-                Register
+                Daftar Akun
               </button>
             </div>
+
+            {authMode !== "forgot" && (
+              <div
+                className={`auth-welcome-note ${
+                  authMode === "register" ? "register" : "login"
+                }`}
+              >
+                <span>{authMode === "login" ? "👋" : "📝"}</span>
+                <div>
+                  <b>
+                    {authMode === "login"
+                      ? "Sudah punya akun?"
+                      : "Belum punya akun?"}
+                  </b>
+                  <p>
+                    {authMode === "login"
+                      ? "Masukkan email dan password yang sudah terdaftar untuk masuk."
+                      : "Isi data berikut untuk membuat akun baru secara gratis."}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {authMode === "forgot" ? (
               <form className="auth-form" onSubmit={handleForgotPasswordSubmit}>
@@ -3096,16 +3119,73 @@ function App() {
                       ? "Masuk"
                       : "Daftar Akun"}
                 </button>
+
+                <div className="auth-switch-copy">
+                  <span>
+                    {authMode === "login"
+                      ? "Belum punya akun?"
+                      : "Sudah punya akun?"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode(authMode === "login" ? "register" : "login");
+                      setAuthError("");
+                      setAuthSuccess("");
+                    }}
+                  >
+                    {authMode === "login"
+                      ? "Daftar akun sekarang"
+                      : "Masuk di sini"}
+                  </button>
+                </div>
               </form>
             )}
           </section>
 
-          <section className="auth-note">
-            <b>Pemeriksaan Kematangan Sawit</b>
-            <p>
-              Masuk untuk memeriksa gambar, menyimpan riwayat, dan melihat
-              kembali hasil pemeriksaan kamu.
-            </p>
+          <section className="auth-guide-card">
+            <div className="auth-guide-heading">
+              <span>📌</span>
+              <div>
+                <b>Petunjuk Login dan Daftar Akun</b>
+                <p>Ikuti langkah sederhana berikut agar akun bisa digunakan.</p>
+              </div>
+            </div>
+
+            <div className="auth-guide-list">
+              <div>
+                <span>1</span>
+                <p>
+                  Belum punya akun? Pilih <b>Daftar Akun</b>, lalu isi nama,
+                  email aktif, dan password minimal 6 karakter.
+                </p>
+              </div>
+
+              <div>
+                <span>2</span>
+                <p>
+                  Setelah mendaftar, buka Gmail dan cari email verifikasi dari
+                  SawitVision.
+                </p>
+              </div>
+
+              <div>
+                <span>3</span>
+                <p>
+                  Klik tautan verifikasi pada email tersebut. Setelah berhasil,
+                  kembali ke halaman ini dan pilih <b>Masuk</b>.
+                </p>
+              </div>
+            </div>
+
+            <div className="spam-warning">
+              <span>📩</span>
+              <p>
+                <b>Penting:</b> Jika email verifikasi tidak terlihat di Kotak
+                Masuk, periksa folder <b>Spam</b> atau <b>Junk</b>. Email
+                verifikasi sering masuk ke folder tersebut.
+              </p>
+            </div>
           </section>
         </main>
       </div>
