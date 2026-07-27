@@ -176,6 +176,70 @@ def update_user_status(
     }
 
 
+@router.delete("/activity-logs/cleanup")
+def cleanup_activity_logs(
+    request: Request,
+    older_than_days: int = Query(90, ge=7, le=3650),
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Menghapus activity log yang lebih lama dari batas hari yang dipilih.
+
+    Catatan terbaru tetap disimpan. Endpoint ini hanya dapat digunakan admin.
+    """
+    params = {"older_than_days": older_than_days}
+
+    deleted_count = db.execute(
+        text("""
+            SELECT COUNT(*)
+            FROM activity_logs
+            WHERE created_at < (
+                CURRENT_TIMESTAMP - (:older_than_days * INTERVAL '1 day')
+            )
+        """),
+        params,
+    ).scalar()
+
+    db.execute(
+        text("""
+            DELETE FROM activity_logs
+            WHERE created_at < (
+                CURRENT_TIMESTAMP - (:older_than_days * INTERVAL '1 day')
+            )
+        """),
+        params,
+    )
+    db.commit()
+
+    deleted_value = int(deleted_count or 0)
+
+    log_activity(
+        db,
+        "ADMIN_CLEANUP_ACTIVITY_LOGS",
+        (
+            f"Admin membersihkan {deleted_value} catatan aktivitas "
+            f"yang lebih lama dari {older_than_days} hari."
+        ),
+        request=request,
+        user_id=current_admin["id"],
+        actor_user_id=current_admin["id"],
+        metadata={
+            "older_than_days": older_than_days,
+            "deleted_count": deleted_value,
+        },
+    )
+
+    return {
+        "message": (
+            f"{deleted_value} catatan aktivitas lama berhasil dihapus. "
+            f"Catatan {older_than_days} hari terakhir tetap disimpan."
+        ),
+        "deleted_count": deleted_value,
+        "retention_days": older_than_days,
+    }
+
+
 @router.get("/activity-logs")
 def get_activity_logs(
     page: int = Query(1, ge=1),

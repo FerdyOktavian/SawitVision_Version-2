@@ -16,8 +16,10 @@ const ADMIN_USERS_API_URL = `${BASE_API_URL}/admin/users`;
 const ADMIN_STORAGE_API_URL = `${BASE_API_URL}/admin/storage-stats`;
 const ADMIN_STORAGE_CLEANUP_API_URL = `${BASE_API_URL}/admin/storage/cleanup`;
 const ADMIN_ACTIVITY_LOGS_API_URL = `${BASE_API_URL}/admin/activity-logs`;
+const ADMIN_ACTIVITY_CLEANUP_API_URL = `${BASE_API_URL}/admin/activity-logs/cleanup`;
 const API_URL = `${BASE_API_URL}/predict`;
 const HISTORY_PAGE_SIZE = 10;
+const ADMIN_USERS_PAGE_SIZE = 20;
 const STATS_API_URL = `${BASE_API_URL}/stats`;
 const USER_REPORT_API_URL = `${BASE_API_URL}/reports/my-predictions.xlsx`;
 const ADMIN_REPORT_API_URL = `${BASE_API_URL}/admin/reports/predictions.xlsx`;
@@ -57,7 +59,7 @@ const ADMIN_PAGE_META = {
     eyebrow: "Aktivitas",
     title: "Aktivitas Sistem",
     description:
-      "Lihat catatan aktivitas penting yang dilakukan pengguna dan admin.",
+      "Cari aktivitas penting dan bersihkan catatan lama sesuai masa penyimpanan.",
   },
   storage: {
     icon: "🗂️",
@@ -234,6 +236,11 @@ function App() {
   // State untuk halaman admin dashboard.
   const [adminStats, setAdminStats] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [adminUserSearchInput, setAdminUserSearchInput] = useState("");
+  const [adminUserSearch, setAdminUserSearch] = useState("");
+  const [adminUsersOffset, setAdminUsersOffset] = useState(0);
+  const [adminUsersTotal, setAdminUsersTotal] = useState(0);
+  const [adminUsersHasMore, setAdminUsersHasMore] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const [adminError, setAdminError] = useState("");
@@ -259,19 +266,20 @@ function App() {
   const [adminActivityFilter, setAdminActivityFilter] = useState("");
   const [adminActivitySearchInput, setAdminActivitySearchInput] = useState("");
   const [adminActivitySearch, setAdminActivitySearch] = useState("");
+  const [adminActivityRetentionDays, setAdminActivityRetentionDays] =
+    useState(90);
+  const [adminActivityCleanupLoading, setAdminActivityCleanupLoading] =
+    useState(false);
+  const [adminActivityCleanupMessage, setAdminActivityCleanupMessage] =
+    useState("");
+  const [adminActivityCleanupError, setAdminActivityCleanupError] =
+    useState("");
 
   // =====================
   // STATE UTAMA APLIKASI
   // =====================
   const [activeTab, setActiveTab] = useState("home");
   const [adminPage, setAdminPage] = useState("overview");
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem("sawitTheme") || "light";
-    } catch {
-      return "light";
-    }
-  });
   const [mode, setMode] = useState("camera");
   const [cameraActive, setCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
@@ -305,6 +313,11 @@ function App() {
   const [adminReportStartDate, setAdminReportStartDate] = useState("");
   const [adminReportEndDate, setAdminReportEndDate] = useState("");
   const [adminReportUserId, setAdminReportUserId] = useState("");
+  const [adminReportUserSearch, setAdminReportUserSearch] = useState("");
+  const [adminReportUserResults, setAdminReportUserResults] = useState([]);
+  const [adminReportUserSearchLoading, setAdminReportUserSearchLoading] =
+    useState(false);
+  const [adminReportSelectedUser, setAdminReportSelectedUser] = useState(null);
   const [adminReportClass, setAdminReportClass] = useState("");
   const [adminReportLoading, setAdminReportLoading] = useState(false);
   const [adminReportError, setAdminReportError] = useState("");
@@ -322,20 +335,6 @@ function App() {
       return [];
     }
   });
-
-  const toggleTheme = () => {
-    setTheme((currentTheme) => {
-      const nextTheme = currentTheme === "dark" ? "light" : "dark";
-
-      try {
-        localStorage.setItem("sawitTheme", nextTheme);
-      } catch (error) {
-        console.warn("Tema gagal disimpan:", error);
-      }
-
-      return nextTheme;
-    });
-  };
 
   const getClassInfo = (className) => {
     const info = {
@@ -558,6 +557,13 @@ function App() {
   };
 
   const exportAdminExcelReport = async () => {
+    if (adminReportUserSearch.trim() && !adminReportUserId) {
+      setAdminReportError(
+        "Pilih pengguna dari hasil pencarian, atau kosongkan kolom untuk semua pengguna.",
+      );
+      return;
+    }
+
     if (
       adminReportStartDate &&
       adminReportEndDate &&
@@ -829,7 +835,7 @@ function App() {
   useEffect(() => {
     if (currentUser?.role === "admin" && activeTab === "admin") {
       fetchAdminStats();
-      fetchAdminUsers();
+      fetchAdminUsers({ search: "", offset: 0, append: false });
       fetchAdminStorage();
     }
   }, [activeTab, currentUser]);
@@ -2031,17 +2037,31 @@ function App() {
     }
   };
 
-  // Mengambil daftar user untuk admin.
-  const fetchAdminUsers = async () => {
+  // Mengambil daftar user dengan pencarian dan pagination server-side.
+  const fetchAdminUsers = async ({
+    search = adminUserSearch,
+    offset = 0,
+    append = false,
+  } = {}) => {
     if (currentUser?.role !== "admin") return;
 
     setAdminUsersLoading(true);
     setAdminError("");
 
     try {
-      const response = await fetch(`${ADMIN_USERS_API_URL}?limit=50&offset=0`, {
-        headers: getAuthHeaders(),
+      const params = new URLSearchParams({
+        limit: String(ADMIN_USERS_PAGE_SIZE),
+        offset: String(offset),
       });
+
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      const response = await fetch(
+        `${ADMIN_USERS_API_URL}?${params.toString()}`,
+        { headers: getAuthHeaders() },
+      );
 
       let data = {};
 
@@ -2057,7 +2077,19 @@ function App() {
         );
       }
 
-      setAdminUsers(data.data || []);
+      const items = data.data || [];
+
+      setAdminUsers((previousUsers) => {
+        if (!append) return items;
+
+        const existingIds = new Set(previousUsers.map((user) => user.id));
+        const uniqueItems = items.filter((user) => !existingIds.has(user.id));
+        return [...previousUsers, ...uniqueItems];
+      });
+
+      setAdminUsersOffset(offset);
+      setAdminUsersTotal(Number(data.total || 0));
+      setAdminUsersHasMore(Boolean(data.has_more));
     } catch (error) {
       console.error("Admin users error:", error);
       setAdminError(
@@ -2070,6 +2102,92 @@ function App() {
       setAdminUsersLoading(false);
     }
   };
+
+  const handleAdminUserSearch = (event) => {
+    event.preventDefault();
+    const nextSearch = adminUserSearchInput.trim();
+    setAdminUserSearch(nextSearch);
+    fetchAdminUsers({ search: nextSearch, offset: 0, append: false });
+  };
+
+  const resetAdminUserSearch = () => {
+    setAdminUserSearchInput("");
+    setAdminUserSearch("");
+    fetchAdminUsers({ search: "", offset: 0, append: false });
+  };
+
+  const loadMoreAdminUsers = () => {
+    const nextOffset = adminUsersOffset + ADMIN_USERS_PAGE_SIZE;
+    fetchAdminUsers({
+      search: adminUserSearch,
+      offset: nextOffset,
+      append: true,
+    });
+  };
+
+  // Mencari pengguna untuk filter laporan tanpa memuat ribuan akun sekaligus.
+  useEffect(() => {
+    if (
+      currentUser?.role !== "admin" ||
+      activeTab !== "admin" ||
+      adminPage !== "reports"
+    ) {
+      return undefined;
+    }
+
+    const query = adminReportUserSearch.trim();
+
+    if (query.length < 2) {
+      setAdminReportUserResults([]);
+      setAdminReportUserSearchLoading(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setAdminReportUserSearchLoading(true);
+
+      try {
+        const params = new URLSearchParams({
+          limit: "8",
+          offset: "0",
+          search: query,
+        });
+
+        const response = await fetch(
+          `${ADMIN_USERS_API_URL}?${params.toString()}`,
+          {
+            headers: getAuthHeaders(),
+            signal: controller.signal,
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            formatApiError(data.detail, "Pencarian pengguna gagal."),
+          );
+        }
+
+        setAdminReportUserResults(
+          (data.data || []).filter((user) => user.role === "user"),
+        );
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Report user search error:", error);
+          setAdminReportUserResults([]);
+        }
+      } finally {
+        setAdminReportUserSearchLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [adminReportUserSearch, activeTab, adminPage, currentUser]);
 
   // Mengubah nama action backend menjadi label yang mudah dibaca.
   const getActivityActionInfo = (action) => {
@@ -2096,6 +2214,11 @@ function App() {
         label: "Admin menonaktifkan user",
         icon: "⛔",
         tone: "red",
+      },
+      ADMIN_CLEANUP_ACTIVITY_LOGS: {
+        label: "Pembersihan catatan aktivitas",
+        icon: "🧹",
+        tone: "orange",
       },
     };
 
@@ -2198,6 +2321,65 @@ function App() {
       action: nextFilter,
       search: adminActivitySearch,
     });
+  };
+
+  const handleAdminActivityCleanup = async () => {
+    if (currentUser?.role !== "admin") return;
+
+    const retentionDays = Number(adminActivityRetentionDays);
+    const confirmed = window.confirm(
+      `Hapus catatan aktivitas yang lebih lama dari ${retentionDays} hari? Catatan terbaru tetap disimpan.`,
+    );
+
+    if (!confirmed) return;
+
+    setAdminActivityCleanupLoading(true);
+    setAdminActivityCleanupMessage("");
+    setAdminActivityCleanupError("");
+
+    try {
+      const response = await fetch(
+        `${ADMIN_ACTIVITY_CLEANUP_API_URL}?older_than_days=${retentionDays}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        },
+      );
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        // Tetap gunakan pesan default bila response bukan JSON.
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          formatApiError(data.detail, "Pembersihan aktivitas gagal."),
+        );
+      }
+
+      setAdminActivityCleanupMessage(
+        data.message ||
+          `${Number(data.deleted_count || 0)} catatan lama berhasil dihapus.`,
+      );
+
+      await Promise.all([
+        fetchAdminActivityLogs({ page: 1, reset: true }),
+        fetchAdminStats(),
+      ]);
+    } catch (error) {
+      console.error("Activity cleanup error:", error);
+      setAdminActivityCleanupError(
+        getFriendlyErrorMessage(
+          error,
+          "Terjadi kesalahan saat membersihkan catatan aktivitas.",
+        ),
+      );
+    } finally {
+      setAdminActivityCleanupLoading(false);
+    }
   };
 
   const fetchAdminStorage = async () => {
@@ -2545,7 +2727,7 @@ function App() {
     const isLoadingReset = resetStatus === "loading" || resetLoading;
 
     return (
-      <div className={`app ${theme === "dark" ? "dark-theme" : "light-theme"}`}>
+      <div className="app light-theme">
         <main className="phone-shell auth-shell">
           <section className="auth-hero verify-hero">
             <div className="auth-logo">🔐</div>
@@ -2665,7 +2847,7 @@ function App() {
     const isErrorVerification = emailVerification.status === "error";
 
     return (
-      <div className={`app ${theme === "dark" ? "dark-theme" : "light-theme"}`}>
+      <div className="app light-theme">
         <main className="phone-shell auth-shell">
           <section className="auth-hero verify-hero">
             <div className="auth-logo">🌴</div>
@@ -2729,7 +2911,7 @@ function App() {
   // =====================
   if (authChecking) {
     return (
-      <div className={`app ${theme === "dark" ? "dark-theme" : "light-theme"}`}>
+      <div className="app light-theme">
         <main className="phone-shell auth-shell">
           <section className="loading-card">
             <div className="spinner"></div>
@@ -2746,7 +2928,7 @@ function App() {
   // =====================
   if (!currentUser) {
     return (
-      <div className={`app ${theme === "dark" ? "dark-theme" : "light-theme"}`}>
+      <div className="app light-theme">
         <main className="phone-shell auth-shell">
           <section className="auth-hero">
             <div className="auth-logo">🌴</div>
@@ -2763,13 +2945,6 @@ function App() {
                 ? "Masukkan email akun kamu untuk menerima link reset password."
                 : "Login untuk menyimpan riwayat prediksi dan mengelola hasil klasifikasi sawit berdasarkan akun pengguna."}
             </p>
-
-            <button
-              className="theme-toggle auth-theme-toggle"
-              onClick={toggleTheme}
-            >
-              {theme === "dark" ? "☀️" : "🌙"}
-            </button>
           </section>
 
           <section className="auth-card">
@@ -2941,7 +3116,7 @@ function App() {
   // TAMPILAN UTAMA SETELAH USER LOGIN
   // =====================
   return (
-    <div className={`app ${theme === "dark" ? "dark-theme" : "light-theme"}`}>
+    <div className="app light-theme">
       <main
         className={
           activeTab === "admin" ? "phone-shell admin-shell" : "phone-shell"
@@ -2959,19 +3134,6 @@ function App() {
                     <h1>Cek Kematangan Sawit</h1>
                   </div>
                 </div>
-
-                <button
-                  className="theme-toggle home-theme-toggle"
-                  onClick={toggleTheme}
-                  title={
-                    theme === "dark"
-                      ? "Gunakan tampilan terang"
-                      : "Gunakan tampilan gelap"
-                  }
-                  aria-label="Ganti tema"
-                >
-                  {theme === "dark" ? "☀️" : "🌙"}
-                </button>
               </div>
 
               <p className="subtitle">
@@ -3981,15 +4143,6 @@ function App() {
 
                 <div className="admin-overview-top">
                   <div className="admin-logo">🧭</div>
-
-                  <button
-                    type="button"
-                    className="admin-theme-button"
-                    onClick={toggleTheme}
-                    aria-label="Ganti tema"
-                  >
-                    {theme === "dark" ? "☀️" : "🌙"}
-                  </button>
                 </div>
 
                 <p className="eyebrow light">Pusat Pengelolaan</p>
@@ -4003,7 +4156,11 @@ function App() {
                   className="admin-refresh-btn"
                   onClick={() => {
                     fetchAdminStats();
-                    fetchAdminUsers();
+                    fetchAdminUsers({
+                      search: adminUserSearch,
+                      offset: 0,
+                      append: false,
+                    });
                     fetchAdminStorage();
                   }}
                   disabled={
@@ -4173,25 +4330,131 @@ function App() {
                       />
                     </label>
 
-                    <label>
-                      Pengguna
-                      <select
-                        value={adminReportUserId}
-                        onChange={(event) => {
-                          setAdminReportUserId(event.target.value);
+                    <div className="report-user-filter-block">
+                      <span className="report-user-filter-label">
+                        Pengguna Laporan
+                      </span>
+
+                      <button
+                        type="button"
+                        className={`report-all-users-btn ${
+                          !adminReportUserId ? "active" : ""
+                        }`}
+                        onClick={() => {
+                          setAdminReportUserId("");
+                          setAdminReportSelectedUser(null);
+                          setAdminReportUserSearch("");
+                          setAdminReportUserResults([]);
                           setAdminReportError("");
                         }}
                       >
-                        <option value="">Semua Pengguna</option>
-                        {adminUsers
-                          .filter((user) => user.role === "user")
-                          .map((user) => (
-                            <option value={user.id} key={user.id}>
-                              {user.name} — {user.email}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
+                        <span className="report-all-users-icon">👥</span>
+                        <span>
+                          <b>Seluruh Pengguna</b>
+                          <small>Masukkan semua akun ke dalam laporan.</small>
+                        </span>
+                        {!adminReportUserId && (
+                          <span className="report-filter-check">✓</span>
+                        )}
+                      </button>
+
+                      <label className="report-user-search-field">
+                        Atau cari pengguna tertentu
+                        <div className="report-user-search-box">
+                          <input
+                            type="text"
+                            value={adminReportUserSearch}
+                            onChange={(event) => {
+                              setAdminReportUserSearch(event.target.value);
+                              setAdminReportUserId("");
+                              setAdminReportSelectedUser(null);
+                              setAdminReportError("");
+                            }}
+                            placeholder="Ketik nama atau email pengguna"
+                            autoComplete="off"
+                          />
+
+                          {adminReportUserSearchLoading && (
+                            <span className="report-user-search-status">
+                              Mencari...
+                            </span>
+                          )}
+
+                          {adminReportUserSearch.trim().length >= 2 &&
+                            !adminReportSelectedUser &&
+                            !adminReportUserSearchLoading && (
+                              <div className="report-user-suggestions">
+                                {adminReportUserResults.length === 0 ? (
+                                  <span className="report-user-empty">
+                                    Pengguna tidak ditemukan.
+                                  </span>
+                                ) : (
+                                  adminReportUserResults.map((user) => (
+                                    <button
+                                      type="button"
+                                      key={user.id}
+                                      onClick={() => {
+                                        setAdminReportUserId(user.id);
+                                        setAdminReportSelectedUser(user);
+                                        setAdminReportUserSearch("");
+                                        setAdminReportUserResults([]);
+                                        setAdminReportError("");
+                                      }}
+                                    >
+                                      <span className="report-user-result-avatar">
+                                        {(user.name || user.email || "U")
+                                          .charAt(0)
+                                          .toUpperCase()}
+                                      </span>
+                                      <span>
+                                        <b>{user.name}</b>
+                                        <small>{user.email}</small>
+                                      </span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                        </div>
+                      </label>
+
+                      {adminReportSelectedUser && (
+                        <div className="report-selected-user">
+                          <span className="report-selected-user-avatar">
+                            {(
+                              adminReportSelectedUser.name ||
+                              adminReportSelectedUser.email ||
+                              "U"
+                            )
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                          <span className="report-selected-user-copy">
+                            <small>Pengguna dipilih</small>
+                            <b>{adminReportSelectedUser.name}</b>
+                            <span>{adminReportSelectedUser.email}</span>
+                          </span>
+                          <button
+                            type="button"
+                            aria-label="Hapus pengguna yang dipilih"
+                            onClick={() => {
+                              setAdminReportUserId("");
+                              setAdminReportSelectedUser(null);
+                              setAdminReportUserSearch("");
+                              setAdminReportUserResults([]);
+                              setAdminReportError("");
+                            }}
+                          >
+                            Ganti
+                          </button>
+                        </div>
+                      )}
+
+                      <small className="report-user-helper">
+                        Pilih “Seluruh Pengguna” atau cari satu pengguna
+                        berdasarkan nama maupun email.
+                      </small>
+                    </div>
 
                     <label>
                       Kelas Prediksi
@@ -4224,6 +4487,9 @@ function App() {
                         setAdminReportStartDate("");
                         setAdminReportEndDate("");
                         setAdminReportUserId("");
+                        setAdminReportUserSearch("");
+                        setAdminReportUserResults([]);
+                        setAdminReportSelectedUser(null);
                         setAdminReportClass("");
                         setAdminReportError("");
                       }}
@@ -4513,6 +4779,59 @@ function App() {
                     <span className="mini-badge">🛡️</span>
                   </div>
 
+                  <div className="activity-retention-panel">
+                    <div>
+                      <b>Atur penyimpanan catatan aktivitas</b>
+                      <p>
+                        Simpan catatan terbaru saja agar tabel aktivitas tidak
+                        terus bertambah tanpa batas. Rekomendasi awal: 90 hari.
+                      </p>
+                    </div>
+
+                    <div className="activity-retention-controls">
+                      <label>
+                        Hapus data lebih lama dari
+                        <select
+                          value={adminActivityRetentionDays}
+                          onChange={(event) =>
+                            setAdminActivityRetentionDays(
+                              Number(event.target.value),
+                            )
+                          }
+                        >
+                          <option value={30}>30 hari</option>
+                          <option value={60}>60 hari</option>
+                          <option value={90}>90 hari</option>
+                          <option value={180}>180 hari</option>
+                          <option value={365}>1 tahun</option>
+                        </select>
+                      </label>
+
+                      <button
+                        type="button"
+                        className="activity-cleanup-btn"
+                        onClick={handleAdminActivityCleanup}
+                        disabled={adminActivityCleanupLoading}
+                      >
+                        {adminActivityCleanupLoading
+                          ? "Membersihkan..."
+                          : "🧹 Bersihkan Data Lama"}
+                      </button>
+                    </div>
+
+                    {adminActivityCleanupMessage && (
+                      <div className="activity-cleanup-feedback success">
+                        ✅ {adminActivityCleanupMessage}
+                      </div>
+                    )}
+
+                    {adminActivityCleanupError && (
+                      <div className="activity-cleanup-feedback error">
+                        ⚠️ {adminActivityCleanupError}
+                      </div>
+                    )}
+                  </div>
+
                   <form
                     className="admin-activity-toolbar"
                     onSubmit={handleAdminActivitySearch}
@@ -4545,6 +4864,9 @@ function App() {
                       <option value="ADMIN_ACTIVATE_USER">Aktifkan user</option>
                       <option value="ADMIN_DEACTIVATE_USER">
                         Nonaktifkan user
+                      </option>
+                      <option value="ADMIN_CLEANUP_ACTIVITY_LOGS">
+                        Pembersihan aktivitas
                       </option>
                     </select>
 
@@ -4687,7 +5009,42 @@ function App() {
                     <span className="mini-badge">👤</span>
                   </div>
 
-                  {adminUsersLoading ? (
+                  <form
+                    className="admin-user-search-toolbar"
+                    onSubmit={handleAdminUserSearch}
+                  >
+                    <input
+                      type="search"
+                      value={adminUserSearchInput}
+                      onChange={(event) =>
+                        setAdminUserSearchInput(event.target.value)
+                      }
+                      placeholder="Cari nama atau email pengguna..."
+                      aria-label="Cari pengguna"
+                    />
+                    <button type="submit" className="primary-btn">
+                      🔎 Cari
+                    </button>
+                    {adminUserSearch && (
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={resetAdminUserSearch}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </form>
+
+                  <div className="admin-user-list-meta">
+                    <span>
+                      Menampilkan {adminUsers.length} dari {adminUsersTotal}{" "}
+                      akun
+                    </span>
+                    {adminUserSearch && <b>Hasil: “{adminUserSearch}”</b>}
+                  </div>
+
+                  {adminUsersLoading && adminUsers.length === 0 ? (
                     <div className="admin-empty-mini">
                       <div className="spinner"></div>
                       <p>Memuat daftar user...</p>
@@ -4779,6 +5136,19 @@ function App() {
                         );
                       })}
                     </div>
+                  )}
+
+                  {adminUsersHasMore && (
+                    <button
+                      type="button"
+                      className="admin-load-more-users"
+                      onClick={loadMoreAdminUsers}
+                      disabled={adminUsersLoading}
+                    >
+                      {adminUsersLoading
+                        ? "Memuat..."
+                        : "Muat Pengguna Berikutnya"}
+                    </button>
                   )}
                 </section>
               </>
