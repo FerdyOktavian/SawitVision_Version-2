@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import panduanSpam from "./assets/panduan-folder-spam.jpg";
 
 const BASE_API_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -3300,6 +3301,31 @@ function App() {
                 <b>Penting:</b> Jika email verifikasi tidak terlihat di Kotak
                 Masuk, periksa folder <b>Spam</b> atau <b>Junk</b>. Email
                 verifikasi sering masuk ke folder tersebut.
+              </p>
+            </div>
+
+            <div className="spam-location-card">
+              <div className="spam-location-heading">
+                <span aria-hidden="true">🔎</span>
+
+                <div>
+                  <b>Lokasi folder Spam di Gmail</b>
+                  <p>
+                    Buka menu Gmail di sebelah kiri, lalu pilih folder
+                    <strong> Spam</strong> seperti yang ditandai pada gambar.
+                  </p>
+                </div>
+              </div>
+
+              <img
+                src={panduanSpam}
+                alt="Petunjuk lokasi folder Spam pada menu Gmail"
+                className="spam-location-image"
+              />
+
+              <p className="spam-location-caption">
+                Setelah menemukan email dari SawitVision, buka email tersebut,
+                tekan tautan verifikasi, lalu kembali ke aplikasi untuk masuk.
               </p>
             </div>
           </section>
