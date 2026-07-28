@@ -168,6 +168,8 @@ function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const pageTopRef = useRef(null);
+  const mainShellRef = useRef(null);
 
   // =====================
   // STATE AUTENTIKASI USER
@@ -290,6 +292,67 @@ function App() {
   // =====================
   const [activeTab, setActiveTab] = useState("home");
   const [adminPage, setAdminPage] = useState("overview");
+
+  // Memaksa halaman kembali ke posisi paling atas saat berpindah menu.
+  // scrollIntoView dipakai sebagai cara utama, sedangkan scrollTop menjadi cadangan
+  // untuk browser atau layout yang memakai elemen scroll berbeda.
+  const scrollPageToTop = () => {
+    const resetScroll = () => {
+      pageTopRef.current?.scrollIntoView({
+        block: "start",
+        inline: "nearest",
+        behavior: "auto",
+      });
+
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+
+      const scrollingElement =
+        document.scrollingElement || document.documentElement;
+
+      if (scrollingElement) {
+        scrollingElement.scrollTop = 0;
+        scrollingElement.scrollLeft = 0;
+      }
+
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
+      if (mainShellRef.current) {
+        mainShellRef.current.scrollTop = 0;
+        mainShellRef.current.scrollLeft = 0;
+      }
+
+      const appElement = mainShellRef.current?.closest(".app");
+
+      if (appElement) {
+        appElement.scrollTop = 0;
+        appElement.scrollLeft = 0;
+      }
+    };
+
+    // Jalankan setelah React selesai mengganti isi halaman.
+    window.requestAnimationFrame(() => {
+      resetScroll();
+      window.requestAnimationFrame(resetScroll);
+    });
+  };
+
+  const navigateToTab = (tabName) => {
+    setActiveTab(tabName);
+  };
+
+  const navigateToAdminPage = (pageName) => {
+    setAdminPage(pageName);
+  };
+
+  useEffect(() => {
+    scrollPageToTop();
+  }, [activeTab, adminPage]);
+
   const [mode, setMode] = useState("camera");
   const [cameraActive, setCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
@@ -3299,8 +3362,8 @@ function App() {
               <span>📩</span>
               <p>
                 <b>Penting:</b> Jika email verifikasi tidak terlihat di Kotak
-                Masuk, periksa folder <b>Spam</b>. Email
-                verifikasi sering masuk ke folder tersebut.
+                Masuk, periksa folder <b>Spam</b>. Email verifikasi sering masuk
+                ke folder tersebut.
               </p>
             </div>
 
@@ -3340,10 +3403,16 @@ function App() {
   return (
     <div className="app light-theme">
       <main
+        ref={mainShellRef}
         className={
           activeTab === "admin" ? "phone-shell admin-shell" : "phone-shell"
         }
       >
+        <div
+          ref={pageTopRef}
+          aria-hidden="true"
+          style={{ width: 0, height: 0, overflow: "hidden" }}
+        />
         {activeTab === "home" && (
           <>
             <section className="home-hero">
@@ -3367,7 +3436,7 @@ function App() {
                 <button
                   type="button"
                   className="home-profile-card"
-                  onClick={() => setActiveTab("profile")}
+                  onClick={() => navigateToTab("profile")}
                 >
                   <span className="home-profile-avatar">
                     {currentUser?.name
@@ -3905,7 +3974,7 @@ function App() {
                     </p>
                     <button
                       className="primary-btn full"
-                      onClick={() => setActiveTab("home")}
+                      onClick={() => navigateToTab("home")}
                     >
                       Mulai Prediksi
                     </button>
@@ -4498,7 +4567,7 @@ function App() {
                 <button
                   type="button"
                   className="admin-back-button"
-                  onClick={() => setAdminPage("overview")}
+                  onClick={() => navigateToAdminPage("overview")}
                 >
                   ← Kembali ke Dashboard
                 </button>
@@ -4586,7 +4655,7 @@ function App() {
                         type="button"
                         className="admin-menu-card"
                         key={item.id}
-                        onClick={() => setAdminPage(item.id)}
+                        onClick={() => navigateToAdminPage(item.id)}
                       >
                         <span className="admin-menu-icon">{item.icon}</span>
 
@@ -5613,7 +5682,7 @@ function App() {
         >
           <button
             className={activeTab === "home" ? "nav-item active" : "nav-item"}
-            onClick={() => setActiveTab("home")}
+            onClick={() => navigateToTab("home")}
           >
             🏠
             <span>Beranda</span>
@@ -5621,7 +5690,7 @@ function App() {
 
           <button
             className={activeTab === "history" ? "nav-item active" : "nav-item"}
-            onClick={() => setActiveTab("history")}
+            onClick={() => navigateToTab("history")}
           >
             📊
             <span>Riwayat</span>
@@ -5629,7 +5698,7 @@ function App() {
 
           <button
             className={activeTab === "profile" ? "nav-item active" : "nav-item"}
-            onClick={() => setActiveTab("profile")}
+            onClick={() => navigateToTab("profile")}
           >
             👤
             <span>Profil</span>
@@ -5639,8 +5708,8 @@ function App() {
             <button
               className={activeTab === "admin" ? "nav-item active" : "nav-item"}
               onClick={() => {
-                setActiveTab("admin");
                 setAdminPage("overview");
+                navigateToTab("admin");
               }}
             >
               ⚙️
@@ -5650,7 +5719,7 @@ function App() {
 
           <button
             className={activeTab === "about" ? "nav-item active" : "nav-item"}
-            onClick={() => setActiveTab("about")}
+            onClick={() => navigateToTab("about")}
           >
             ℹ️
             <span>Tentang</span>
