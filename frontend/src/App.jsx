@@ -3299,7 +3299,7 @@ function App() {
               <span>📩</span>
               <p>
                 <b>Penting:</b> Jika email verifikasi tidak terlihat di Kotak
-                Masuk, periksa folder <b>Spam</b> atau <b>Junk</b>. Email
+                Masuk, periksa folder <b>Spam</b>. Email
                 verifikasi sering masuk ke folder tersebut.
               </p>
             </div>

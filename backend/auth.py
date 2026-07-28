@@ -102,7 +102,7 @@ def get_current_user(
     if not user["is_verified"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email akun belum diverifikasi.",
+            detail="Email akun belum diverifikasi. Silahkan buka gmail verifikasi yang dikirimkan ke alamat gmail Anda untuk mengaktifkan akun.",
         )
 
     return user
